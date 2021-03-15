@@ -22,9 +22,9 @@ __global__ void matMult(int *da, int *db, int *dc) {
   int k=0;
   if (col < N && row < N) {
     for (int i = 0; i < N; i++) {
-      sum += da[row * N + i] * db[i * k + col];
+      sum += da[row * N + i] * db[i * N + col];
     }
-    dc[row * k + col] = sum;
+    dc[row * N + col] = sum;
   }
 }
 
