@@ -19,11 +19,12 @@ __global__ void matMult(int *da, int *db, int *dc) {
   int row = blockIdx.y * blockDim.y + threadIdx.y;
   int col = blockIdx.x * blockDim.x + threadIdx.x;
   int sum = 0;
-  if (col < k && row < m) {
-    for (int i = 0; i < n; i++) {
-      sum += a[row * n + i] * b[i * k + col];
+  int k=0;
+  if (col < N && row < N) {
+    for (int i = 0; i < N; i++) {
+      sum += da[row * N + i] * db[i * k + col];
     }
-    c[row * k + col] = sum;
+    dc[row * k + col] = sum;
   }
 }
 
