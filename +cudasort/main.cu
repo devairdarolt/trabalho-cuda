@@ -20,7 +20,7 @@ __global__ void sort (int *vet_d, int size) {
    int b = k*part+part;
    int i=0,j=0;
    int min_idx=0,temp;
-   for(i=a;i<b;i++){
+   /*for(i=a;i<b;i++){
    		min_idx = i;
    		for(j=i+1;j<b;j++){
    			if(vet_d[j]<vet_d[min_idx]){
@@ -31,7 +31,7 @@ __global__ void sort (int *vet_d, int size) {
    		temp = vet_d[min_idx];
    		vet_d[min_idx] = vet_d[i];
    		vet_d[i] = temp;	
-   }
+   }*/
    
    
 }
@@ -102,7 +102,7 @@ __host__ void vet_imprimir(int *v,int size){
 	printf("\n");
 	printf("\n");
 	for(int i=0;i<size;i++){
-		if(i%10==0){
+		if(i%4==0){
 			printf("\n");
 		}
 		printf("%d\n",v[i]);		
