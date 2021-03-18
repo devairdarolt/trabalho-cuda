@@ -4,51 +4,40 @@
 
 
 
-__device__ void swap(int *xp, int *yp)  
-{  
-    int temp = *xp;  
-    *xp = *yp;  
-    *yp = temp;  
-}  
-  
-__device__ void selectionSort(int *arr, int n)  
-{  
-    int i, j, min_idx;  
-  
-    // One by one move boundary of unsorted subarray  
-    for (i = 0; i < n-1; i++)  
-    {
-    	arr[i]  = arr[i] * 100;
-        // Find the minimum element in unsorted array  
-        /*min_idx = i;  
-        for (j = i+1; j < n; j++)  
-        if (arr[j] < arr[min_idx])  
-            min_idx = j;  
-  
-        // Swap the found minimum element with the first element  
-        swap(&arr[min_idx], &arr[i]);  
-        */
-    }  
-} 
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // função executada na GPU
 __global__ void sort (int *vet_d, int size) {
-   int i = threadIdx.x;
-   int k=0;
+   int k = threadIdx.x;   
    int part = size / 10; //== cada trede ordenara quatro posições do vetor[40]
    /**
-		0 < i=0 < 10 .... 10 < i=1 < 20 .... 20 < i=2 < 30 ... 30 < i=3 < 40(*i)
+		0 < i=0 < 4 .... 4 < i=1 < 8 .... 8 < i=2 < 12 ... 12 < i=3 < 18
    */
-   int sub_vet_desordenado[4];
-   //sub_vet_desordenado = (int)malloc(sizeof(int)*part);
-   for(k=i;k<(i*part);k++){
-		k=k;   	
-   		sub_vet_desordenado[k] = vet_d[k]; 
-   }   
-   selectionSort(&sub_vet_desordenado[0],part);
+   /*int min_idx=999999;
+   for(k=i*part;k< ((i*part) + part);k++){
+		
+   		
+   } */  
+
+   int a = k*part;
+   int b = k*part+part;
+   int i=0,j=0;
+   int min_idx=0;
+   for(i=a;i<b;i++){
+   		min_idx = i;
+   		for(j=i+1;j<b;j++){
+   			if(vet_d[j]<vet_d[min_idx]){
+   				min_idx = j;
+   			}
+   		}
+   		temp = 0;
+   		temp = vet_d[min_idx];
+   		vet_d[min_idx] = vet_d[i];
+   		vet_d[i] = temp;	
+   }
+   
 }
 
 
