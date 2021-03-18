@@ -50,13 +50,13 @@ void vet_imprimir(int *v,int size){
 		return;		
 	}
 
-	for(int i=0, j=0;i<size;i++, j++){
-		printf("%d\t",v[i]);
-		
-		if(j==10){
+	for(int i=1, j=0;i<size-1;i++, j++){
+		printf("%d\t",v[i]);		
+		if(j%10){
 			printf("\n");
 		}
 	}
+	printf("\n");
 
 
 }
