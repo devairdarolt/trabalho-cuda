@@ -2,6 +2,16 @@
 #include <stdio.h>
 #include <math.h>
 
+
+// função executada na GPU
+__global__ void sem_nome (int *vet_d, int size) {
+   int i = threadIdx.x;
+   printf("Sou nucleo %d\n", i);
+}
+
+
+// função executada no HOST
+
 __host__ int *criar_vetor_desordenado(int *v,int size);
 
 __host__ void vet_imprimir(int *v,int size);
@@ -10,13 +20,14 @@ int main (int argc, char ** argv) {
 	int nthreads = 4;
 	int nblocos = 1;
 
-	//vetores
-	
+	//vetores do host	
 	int *vet_desordenado=NULL, *vet_ordenado=NULL;
-
-
 	vet_desordenado = criar_vetor_desordenado(vet_desordenado,40);//aloca vetor em host
 	vet_imprimir(vet_desordenado,40); 
+
+	int *dev_vet =NULL;
+	cudaMalloc((void**)&vet_d,size * sizeof(int));// aloca vetor na memória global da placa
+	sem_nome<<<1,10>>>(vet_d, size);
 
 
 	return 0;
@@ -51,11 +62,12 @@ __host__ void vet_imprimir(int *v,int size){
 		return;		
 	}
 
-	for(int i=1, j=0;i<size-1;i++, j++){
-		printf("%d\t",v[i]);		
-		if(!j%10){
+	for(int i=1;i<size-1;i++){
+		if(!i%10){
 			printf("\n");
 		}
+		printf("%d\t",v[i]);		
+		
 	}
 	printf("\n");
 
