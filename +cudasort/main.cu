@@ -6,7 +6,9 @@
 // função executada na GPU
 __global__ void sem_nome (int *vet_d, int size) {
    int i = threadIdx.x;
-   printf("Sou nucleo %d\n", i);
+
+   vet_d[i] = i*100;
+   //printf("Sou nucleo %d\n", i);
 }
 
 
@@ -24,11 +26,15 @@ int main (int argc, char ** argv) {
 	//vetores do host	
 	int *vet_desordenado=NULL, *vet_ordenado=NULL;
 	vet_desordenado = criar_vetor_desordenado(vet_desordenado,size);//aloca vetor em host
+	cudaMallocHost((void **) &vet_ordenado, size*sizeof(int));
 	vet_imprimir(vet_desordenado,size); 
 
 	int *dev_vet =NULL;
 	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
+	cudaMemcpy (dev_vet, criar_vetor_desordenado, size*sizeof(int), cudaMemcpyHostToDevice);
 	sem_nome<<<1,10>>>(dev_vet, size);
+	cudaMemcpy (vet_ordenado, dev_vet, size, cudaMemcpyDeviceToHost);
+	vet_imprimir(vet_ordenado,size); 
 
 
 	return 0;
