@@ -16,12 +16,6 @@ __global__ void sort (int *vet_d, int size) {
    /**
 		0 < i=0 < 4 .... 4 < i=1 < 8 .... 8 < i=2 < 12 ... 12 < i=3 < 18
    */
-   /*int min_idx=999999;
-   for(k=i*part;k< ((i*part) + part);k++){
-		
-   		
-   } */  
-
    int a = k*part;
    int b = k*part+part;
    int i=0,j=0;
@@ -60,8 +54,11 @@ int main (int argc, char ** argv) {
 	int *vet_desordenado=NULL, *vet_ordenado=NULL;
 	vet_desordenado = criar_vetor_desordenado(vet_desordenado,size);//aloca vetor em host
 	cudaMallocHost((void **) &vet_ordenado, size*sizeof(int));
+	printf("Vetor desordenado\n");
 	vet_imprimir(vet_desordenado,size); 
 
+
+	printf("vetor parcialmente ordenado\n");
 	int *dev_vet =NULL;
 	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
 	cudaMemcpy (dev_vet, vet_desordenado, size*sizeof(int), cudaMemcpyHostToDevice);
