@@ -35,13 +35,15 @@ __device__ void selectionSort(int *arr, int n)
 // função executada na GPU
 __global__ void sem_nome (int *vet_d, int size) {
    int i = threadIdx.x;
+   int k=0;
    int part = size / 10; //== cada trede ordenara quatro posições do vetor[40]
    /**
 		0 < i=0 < 10 .... 10 < i=1 < 20 .... 20 < i=2 < 30 ... 30 < i=3 < 40(*i)
    */
    int sub_vet_desordenado[part];
    //sub_vet_desordenado = (int)malloc(sizeof(int)*part);
-   for(int k=i;k<(i*10);k++){
+   for(k=i;k<(i*10);k++){
+		k=k;   	
    		sub_vet_desordenado[k] = vet_d[k]; 
    }   
    selectionSort(&sub_vet_desordenado,part);
