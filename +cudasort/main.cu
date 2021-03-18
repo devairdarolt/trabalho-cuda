@@ -7,10 +7,14 @@
 __global__ void sem_nome (int *vet_d, int size) {
    int i = threadIdx.x;
 
-   vet_d[i] = i*100;
+   vet_d[i] = mult(&vet[i],i);
    //printf("Sou nucleo %d\n", i);
 }
 
+
+__device__ void mult(int *index,int i){
+	index = i*100;
+}
 
 // função executada no HOST
 
