@@ -42,7 +42,7 @@ __global__ void sort (int *vet_d, int size) {
    /**
 		0 < i=0 < 10 .... 10 < i=1 < 20 .... 20 < i=2 < 30 ... 30 < i=3 < 40(*i)
    */
-   int sub_vet_desordenado[part];
+   int sub_vet_desordenado[4];
    //sub_vet_desordenado = (int)malloc(sizeof(int)*part);
    for(k=i;k<(i*part);k++){
 		k=k;   	
