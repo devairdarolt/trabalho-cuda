@@ -111,8 +111,10 @@ __host__ void vet_imprimir(int *v,int size){
 		return;		
 	}
 
-	for(int i=1;i<size-1;i++){
-		if(!i%10){
+	printf("\n");
+	printf("\n");
+	for(int i=0;i<size;i++){
+		if(i%10==0){
 			printf("\n");
 		}
 		printf("%d\t",v[i]);		
