@@ -47,10 +47,10 @@ void vet_imprimir(int *v,int size){
 	}
 	if(size < 0){
 		printf("O tamanho do vetor tem que ser maior que 0\n");
-		return		
+		return;		
 	}
 
-	for(int i=0;i<size;i++, j++){
+	for(int i=0, j=0;i<size;i++, j++){
 		printf("%d\t",v[i]);
 		
 		if(j==10){
