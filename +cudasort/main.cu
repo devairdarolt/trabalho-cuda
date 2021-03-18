@@ -33,7 +33,7 @@ __device__ void selectionSort(int *arr, int n)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // função executada na GPU
-__global__ void sem_nome (int *vet_d, int size) {
+__global__ void sort (int *vet_d, int size) {
    int i = threadIdx.x;
    int k=0;
    int part = size / 10; //== cada trede ordenara quatro posições do vetor[40]
@@ -46,7 +46,7 @@ __global__ void sem_nome (int *vet_d, int size) {
 		k=k;   	
    		sub_vet_desordenado[k] = vet_d[k]; 
    }   
-   selectionSort(&sub_vet_desordenado,part);
+   selectionSort(&sub_vet_desordenado[0],part);
 }
 
 
@@ -72,7 +72,7 @@ int main (int argc, char ** argv) {
 	int *dev_vet =NULL;
 	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
 	cudaMemcpy (dev_vet, vet_desordenado, size*sizeof(int), cudaMemcpyHostToDevice);
-	sem_nome<<<1,10>>>(dev_vet, size);
+	sort<<<1,10>>>(dev_vet, size);
 	cudaMemcpy (vet_ordenado, dev_vet, size, cudaMemcpyDeviceToHost);
 	vet_imprimir(vet_ordenado,size); 
 
