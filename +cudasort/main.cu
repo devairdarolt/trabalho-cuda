@@ -24,7 +24,7 @@ __global__ void sort (int *vet_d, int size) {
    int a = k*part;
    int b = k*part+part;
    int i=0,j=0;
-   int min_idx=0;
+   int min_idx=0,temp;
    for(i=a;i<b;i++){
    		min_idx = i;
    		for(j=i+1;j<b;j++){
