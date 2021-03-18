@@ -31,7 +31,7 @@ int main (int argc, char ** argv) {
 
 	int *dev_vet =NULL;
 	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
-	cudaMemcpy (dev_vet, criar_vetor_desordenado, size*sizeof(int), cudaMemcpyHostToDevice);
+	cudaMemcpy (dev_vet, vetor_desordenado, size*sizeof(int), cudaMemcpyHostToDevice);
 	sem_nome<<<1,10>>>(dev_vet, size);
 	cudaMemcpy (vet_ordenado, dev_vet, size, cudaMemcpyDeviceToHost);
 	vet_imprimir(vet_ordenado,size); 
