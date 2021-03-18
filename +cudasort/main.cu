@@ -3,6 +3,11 @@
 #include <math.h>
 
 
+__device__ void mult(int *index,int i){
+	index = i*100;
+}
+
+
 // função executada na GPU
 __global__ void sem_nome (int *vet_d, int size) {
    int i = threadIdx.x;
@@ -11,10 +16,6 @@ __global__ void sem_nome (int *vet_d, int size) {
    //printf("Sou nucleo %d\n", i);
 }
 
-
-__device__ void mult(int *index,int i){
-	index = i*100;
-}
 
 // função executada no HOST
 
