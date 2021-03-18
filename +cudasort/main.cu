@@ -38,6 +38,9 @@ __global__ void sort (int *vet_d, int size) {
    		vet_d[min_idx] = vet_d[i];
    		vet_d[i] = temp;	
    }
+   for(i=a;i<b;i++){
+   		printf("%d\n",vet_d[i] );
+   }
    
 }
 
@@ -65,8 +68,8 @@ int main (int argc, char ** argv) {
 	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
 	cudaMemcpy (dev_vet, vet_desordenado, size*sizeof(int), cudaMemcpyHostToDevice);
 	sort<<<1,10>>>(dev_vet, size);
-	cudaMemcpy (vet_ordenado, dev_vet, size, cudaMemcpyDeviceToHost);
-	vet_imprimir(vet_ordenado,size); 
+	//cudaMemcpy (vet_ordenado, dev_vet, size, cudaMemcpyDeviceToHost);
+	//vet_imprimir(vet_ordenado,size); 
 
 
 	return 0;
