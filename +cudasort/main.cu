@@ -12,7 +12,7 @@ __device__ void mult(int *index,int i){
 __global__ void sem_nome (int *vet_d, int size) {
    int i = threadIdx.x;
 
-   vet_d[i] = mult(&vet[i],i);
+   vet_d[i] = mult(vet_d[i],i);
    //printf("Sou nucleo %d\n", i);
 }
 
