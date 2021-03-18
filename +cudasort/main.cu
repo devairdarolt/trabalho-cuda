@@ -32,7 +32,7 @@ int *criar_vetor_desordenado(int *v,int size){
 	}
 	
 
-	cudaMallocHost((void **) &v, size*sizof(int));
+	cudaMallocHost((void **) &v, size*sizeof(int));
 	
 	//inicia valores do vetor desordenado
 	for(int i=0;i<size;i++){
