@@ -39,12 +39,12 @@ __global__ void sem_nome (int *vet_d, int size) {
    /**
 		0 < i=0 < 10 .... 10 < i=1 < 20 .... 20 < i=2 < 30 ... 30 < i=3 < 40(*i)
    */
-   int *sub_vet_desordenado =NULL;
-   sub_vet_desordenado = (int)malloc(sizeof(int)*part);
-   for(int k=i;k<i*10;k++){
+   int sub_vet_desordenado[part];
+   //sub_vet_desordenado = (int)malloc(sizeof(int)*part);
+   for(int k=i;k<(i*10);k++){
    		sub_vet_desordenado[k] = vet_d[k]; 
    }   
-   selectionSort(sub_vet_desordenado,part);
+   selectionSort(&sub_vet_desordenado,part);
 }
 
 
