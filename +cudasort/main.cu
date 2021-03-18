@@ -26,8 +26,8 @@ int main (int argc, char ** argv) {
 	vet_imprimir(vet_desordenado,40); 
 
 	int *dev_vet =NULL;
-	cudaMalloc((void**)&vet_d,size * sizeof(int));// aloca vetor na memória global da placa
-	sem_nome<<<1,10>>>(vet_d, size);
+	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
+	sem_nome<<<1,10>>>(dev_vet, size);
 
 
 	return 0;
