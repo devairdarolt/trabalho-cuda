@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <math.h>
 
-int *criar_vetor_desordenado(int *v,int size);
+__host__ int *criar_vetor_desordenado(int *v,int size);
 
-void vet_imprimir(int *v,int size);
+__host__ void vet_imprimir(int *v,int size);
 
 int main (int argc, char ** argv) {
 	int nthreads = 4;
@@ -12,16 +12,17 @@ int main (int argc, char ** argv) {
 
 	//vetores
 	
-	int *vet_desordenado, *vet_ordenado;
+	int *vet_desordenado=NULL, *vet_ordenado=NULL;
 
-	vet_desordenado = criar_vetor_desordenado(vet_desordenado,40);
+
+	vet_desordenado = criar_vetor_desordenado(vet_desordenado,40);//aloca vetor em host
 	vet_imprimir(vet_desordenado,40); 
 
 
 	return 0;
 }
 
-int *criar_vetor_desordenado(int *v,int size){
+__host__ int *criar_vetor_desordenado(int *v,int size){
 
 	if(v!=NULL){
 		printf("O vetor informado ja existe!\n");
@@ -40,7 +41,7 @@ int *criar_vetor_desordenado(int *v,int size){
 	}
 	return v;
 }
-void vet_imprimir(int *v,int size){
+__host__ void vet_imprimir(int *v,int size){
 	if(v==NULL){
 		printf("O vetor informado é NULL!\n");
 		return;
@@ -52,7 +53,7 @@ void vet_imprimir(int *v,int size){
 
 	for(int i=1, j=0;i<size-1;i++, j++){
 		printf("%d\t",v[i]);		
-		if(j%10){
+		if(!j%10){
 			printf("\n");
 		}
 	}
