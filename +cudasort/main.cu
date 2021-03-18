@@ -38,9 +38,7 @@ __global__ void sort (int *vet_d, int size) {
    		vet_d[min_idx] = vet_d[i];
    		vet_d[i] = temp;	
    }
-   for(i=a;i<b;i++){
-   		printf("%d\n",vet_d[i] );
-   }
+   
    
 }
 
