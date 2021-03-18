@@ -20,10 +20,11 @@ int main (int argc, char ** argv) {
 	int nthreads = 4;
 	int nblocos = 1;
 
+	int size = 40;
 	//vetores do host	
 	int *vet_desordenado=NULL, *vet_ordenado=NULL;
-	vet_desordenado = criar_vetor_desordenado(vet_desordenado,40);//aloca vetor em host
-	vet_imprimir(vet_desordenado,40); 
+	vet_desordenado = criar_vetor_desordenado(vet_desordenado,size);//aloca vetor em host
+	vet_imprimir(vet_desordenado,size); 
 
 	int *dev_vet =NULL;
 	cudaMalloc((void**)&dev_vet,size * sizeof(int));// aloca vetor na memória global da placa
