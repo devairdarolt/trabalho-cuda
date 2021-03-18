@@ -12,6 +12,7 @@
 __global__ void sort (int *vet_d, int size) {
    int k = threadIdx.x;   
    int part = size / 10; //== cada trede ordenara quatro posições do vetor[40]
+   printf("Nucleo %d\n",k );
    /**
 		0 < i=0 < 4 .... 4 < i=1 < 8 .... 8 < i=2 < 12 ... 12 < i=3 < 18
    */
@@ -106,7 +107,7 @@ __host__ void vet_imprimir(int *v,int size){
 		if(i%10==0){
 			printf("\n");
 		}
-		printf("%d\t",v[i]);		
+		printf("%d\n",v[i]);		
 		
 	}
 	printf("\n");
