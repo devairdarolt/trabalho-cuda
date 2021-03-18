@@ -3,19 +3,52 @@
 #include <math.h>
 
 
-__device__ void mult(int *index,int i){
-	index = i*100;
-}
 
+__device__ void swap(int *xp, int *yp)  
+{  
+    int temp = *xp;  
+    *xp = *yp;  
+    *yp = temp;  
+}  
+  
+__device__ void selectionSort(int *arr, int n)  
+{  
+    int i, j, min_idx;  
+  
+    // One by one move boundary of unsorted subarray  
+    for (i = 0; i < n-1; i++)  
+    {  
+        // Find the minimum element in unsorted array  
+        min_idx = i;  
+        for (j = i+1; j < n; j++)  
+        if (arr[j] < arr[min_idx])  
+            min_idx = j;  
+  
+        // Swap the found minimum element with the first element  
+        swap(&arr[min_idx], &arr[i]);  
+    }  
+} 
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // função executada na GPU
 __global__ void sem_nome (int *vet_d, int size) {
    int i = threadIdx.x;
-
-   vet_d[i] = mult(vet_d[i],i);
-   //printf("Sou nucleo %d\n", i);
+   int part = size / 10; //== cada trede ordenara quatro posições do vetor[40]
+   /**
+		0 < i=0 < 10 .... 10 < i=1 < 20 .... 20 < i=2 < 30 ... 30 < i=3 < 40(*i)
+   */
+   int *sub_vet_desordenado =NULL;
+   cudaMallocHost((void **) &sub_vet_desordenado, size/10);
+   for(int k=i;k<i*10;k++){
+   		sub_vet_desordenado[k] = vet_d[k]; 
+   }   
+   selectionSort(sub_vet_desordenado,size/10);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // função executada no HOST
 
