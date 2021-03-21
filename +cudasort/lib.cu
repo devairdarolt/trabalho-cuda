@@ -1,9 +1,35 @@
 #include "lib.h"
+#include "lista.h"
+
+#include <cuda.h>
+#include <stdio.h>
+#include <math.h>
+#include <sys/time.h>
+
+
+__device__ void device_log(char *msg){
+	printf("%s\n", msg);
+}
+
+typedef struct Data{
+	int a;
+	int b;
+}Data;
+//##########################################################################
 __device__  int * global_vet_device=NULL;
 __device__  int global_size_vet=0;
 __device__  int global_nr_nucleos=0;
 
+__device__ Lista particoes;// = list_init(sizeof(Data)); // Inicia uma lista para o tipo Data
 
+__device__ double ceild(double num){
+	printf("ceil:%f",num);
+	int inum = (int)num;
+    if (num == (float)inum) {
+        return inum;
+    }
+    return inum + 1;
+}
 
 __device__ void sort_subarray(int arr[], int n, int exp) 
 { 
@@ -48,7 +74,52 @@ __device__ int sort_array(int x){
 	
 	//if(x!=0) return 0; //para facilitar a programação 
 
-		
+	
+	
+	int n =(int) ceild((double)global_size_vet/(double)global_nr_nucleos); // arredonda pra cima
+	printf("dividindo array em %d subarrays de tamanho:%d\n",global_nr_nucleos,n);
+	printf("resto:%d\n",global_size_vet%global_nr_nucleos);
+	printf("numero de particoes:%d\n",n);
+	int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
+	int b = a + n;
+	if(x==global_nr_nucleos-1){ //pq se os tamanhos não forem multiplos pode ter tamanho menor causando buffer overflow
+		b= a+(global_size_vet/n);
+	}
+	Data part;
+	part.a=a;
+	part.b=b;
+
+	printf("Part[%d]: [%d <= x < %d]\n",x,a,b);
+	//list_push_last(&particoes,&part1); // cada nucleo isere sua própria partição na lista.
+
+
+
+	//int *sub_arr = (int *)malloc((b-a) * sizeof(int));// Cria na memória um espaço para um sub_array
+	//sub_arr = &global_vet_device[a];
+	//int m = get_max_val(&sub_arr[0], b-a); 
+
+
+	/* Lista particoes;	
+	list_init(&particoes,sizeof(Data)); //Inicia uma nova lista para partiões!
+	
+	Data part1;
+	part1.a=11;
+	part1.b=22;
+
+	list_push_last(&particoes,&part1); // insere a primeira particao na lista
+
+
+	Data part2;
+	part2.a=33;
+	part2.b=44;
+	list_push_last(&particoes, &part2);
+
+	Data aux;
+
+	list_get_position(&particoes,&aux,1);
+
+	printf("Data aux.a:%d aux.b:%d\n\n",aux.a,aux.b); */
+	/*		
 	//printf("CUDA core [%d]\n",x);
 
 	// 0 <= x=0 < 5 ... 5 <= x=1 <= 10
@@ -66,8 +137,9 @@ __device__ int sort_array(int x){
 		sort_subarray(&sub_arr[0], n, exp); 
 	}	
 	
+	
+	*/
 	return 0;
-
 }
 
 
@@ -119,11 +191,12 @@ __host__ void vet_imprimir(int *v,int vet_size){
 	printf("primeiro elemento:%d\n",v[0]);
 	printf("ultimo elemento:%d\n",v[vet_size-1]);
 	printf("Impressão truncada em 100\n");
+	
 	/*for(int i=0;i<10;i++){
-		if(vet_size%(vet_size/8)==0){
+		if(vet_size%(vet_size/10)==0){
 			printf("v[%d]:%d\n",i,v[i]);			
 		}		
-	}*/	
+	}*/
 		
 	
 	printf("\n");

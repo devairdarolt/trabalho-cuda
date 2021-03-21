@@ -1,7 +1,8 @@
 #include "lib.h"
-//#include <cuda.h>
-//#include <stdio.h>
-//#include <math.h>
+
+#include <cuda.h>
+#include <stdio.h>
+#include <math.h>
 
 
 
@@ -24,8 +25,8 @@ int main (int argc, char ** argv) {
 	int *vet_desordenado=NULL, *vet_ordenado=NULL;
 	vet_desordenado = criar_vetor_desordenado(vet_desordenado,vet_size);//aloca vetor em host
 	cudaMallocHost((void **) &vet_ordenado, vet_size*sizeof(int));
-	printf("Vetor desordenado\n");
-	vet_imprimir(vet_desordenado,vet_size); 
+	//printf("Vetor desordenado\n");
+	//vet_imprimir(vet_desordenado,vet_size); 
 
 	
 	int *dev_vet =NULL;
