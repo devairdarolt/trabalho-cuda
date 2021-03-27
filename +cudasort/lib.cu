@@ -22,18 +22,22 @@ __device__  int global_nr_nucleos=0;
 
 __device__ Lista particoes;// = list_init(sizeof(Data)); // Inicia uma lista para o tipo Data
 
-__device__ double ceild(double num){
-	printf("ceil:%f",num);
-	int inum = (int)num;
-    if (num == (float)inum) {
-        return inum;
-    }
-    return inum + 1;
-}
 
+
+// FUNÇÕES PRIVADAS (Não acessível para o programa main)
+__device__ double ceild(double num);
+
+__device__ void sort_subarray(int arr[], int n, int exp) ;
+
+__device__ int get_max_val(int arr[], int n);
+
+__device__ int sort_array(int x);
+
+__device__ void intercala (int p, int q, int r, int *v);
+
+// CODE
 __device__ void sort_subarray(int arr[], int n, int exp) 
 { 
-
 	//int output[n]; // output array 
 	int *output = (int*)malloc(n * sizeof(int));
 	int i, count[10] = { 0 }; 
@@ -73,72 +77,40 @@ __device__ int get_max_val(int arr[], int n)
 __device__ int sort_array(int x){
 	
 	//if(x!=0) return 0; //para facilitar a programação 
-
 	
-	
-	int n =(int) ceild((double)global_size_vet/(double)global_nr_nucleos); // arredonda pra cima
-	printf("dividindo array em %d subarrays de tamanho:%d\n",global_nr_nucleos,n);
-	printf("resto:%d\n",global_size_vet%global_nr_nucleos);
-	printf("numero de particoes:%d\n",n);
-	int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
-	int b = a + n;
-	if(x==global_nr_nucleos-1){ //pq se os tamanhos não forem multiplos pode ter tamanho menor causando buffer overflow
-		b= a+(global_size_vet/n);
-	}
-	Data part;
-	part.a=a;
-	part.b=b;
-
-	printf("Part[%d]: [%d <= x < %d]\n",x,a,b);
-	//list_push_last(&particoes,&part1); // cada nucleo isere sua própria partição na lista.
-
-
-
-	//int *sub_arr = (int *)malloc((b-a) * sizeof(int));// Cria na memória um espaço para um sub_array
-	//sub_arr = &global_vet_device[a];
-	//int m = get_max_val(&sub_arr[0], b-a); 
-
-
-	/* Lista particoes;	
-	list_init(&particoes,sizeof(Data)); //Inicia uma nova lista para partiões!
-	
-	Data part1;
-	part1.a=11;
-	part1.b=22;
-
-	list_push_last(&particoes,&part1); // insere a primeira particao na lista
-
-
-	Data part2;
-	part2.a=33;
-	part2.b=44;
-	list_push_last(&particoes, &part2);
-
-	Data aux;
-
-	list_get_position(&particoes,&aux,1);
-
-	printf("Data aux.a:%d aux.b:%d\n\n",aux.a,aux.b); */
-	/*		
-	//printf("CUDA core [%d]\n",x);
-
 	// 0 <= x=0 < 5 ... 5 <= x=1 <= 10
-	int n = global_size_vet/global_nr_nucleos; // n = sub_arr_size	
-	int *sub_arr = (int *)malloc(n * sizeof(int));// Cria na memória um espaço para um sub_array
+	int n =(int) ceild((double)global_size_vet/(double)global_nr_nucleos); // arredonda pra cima
 	int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
-	
+	if((global_size_vet%global_nr_nucleos!=0)&&(x==global_nr_nucleos-1)){	
+		n=global_size_vet-a;		
+	}
+	int b = a +n;
+
+	//int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
+	int *sub_arr = (int *)malloc(n * sizeof(int));// Cria na memória um espaço para um sub_array
+
+	printf("Part[%d]:n[%d] [%d <= x < %d]\n",x,n,a,b);
 	//sub_array recebe a referencia da posição inicial do vetor global
-	sub_arr = &global_vet_device[a];
-	//memcpy(&sub_arr[0],&global_vet_device[a],sizeof(int)*n);
-	
-	int m = get_max_val(&sub_arr[0], n); 
+	//sub_arr = &global_vet_device[a];
+	int j=0;
+	int aux;
+	printf("\n");
+	for(int i=a;i<b;i++,j++){
+		aux = global_vet_device[i];
+		sub_arr[j]=aux;			
+	}
+
+	int m = get_max_val(sub_arr, b-a); 
 	//iteração para cada dígito, no caso de um int muito grande esse for vai ocorrer 2^32 -> (10 casas) 
 	for (int exp = 1; m / exp > 0; exp *= 10) {
-		sort_subarray(&sub_arr[0], n, exp); 
+		sort_subarray(&sub_arr[0], b-a, exp); 
 	}	
-	
-	
-	*/
+
+	j=0;
+	for(int i=a;i<b;i++,j++){
+		global_vet_device[i]=sub_arr[j];
+	}
+
 	return 0;
 }
 
@@ -167,10 +139,8 @@ __host__ int *criar_vetor_desordenado(int *v,int vet_size){
 	if(vet_size < 0){
 		printf("O tamanho do vetor tem que ser maior que 0\n");
 	}
-	
 
-	cudaMallocHost((void **) &v, vet_size*sizeof(int));
-	
+	cudaMallocHost((void **) &v, vet_size*sizeof(int));	
 	//inicia valores do vetor desordenado
 	for(int i=0;i<vet_size;i++){
 		v[i]= rand() % 1000;// (0 <= rand <= vet_size)
@@ -191,8 +161,8 @@ __host__ void vet_imprimir(int *v,int vet_size){
 	printf("primeiro elemento:%d\n",v[0]);
 	printf("ultimo elemento:%d\n",v[vet_size-1]);
 	printf("Impressão truncada em 100\n");
-	
-	/*for(int i=0;i<10;i++){
+	/*
+	for(int i=0;i<vet_size;i++){
 		if(vet_size%(vet_size/10)==0){
 			printf("v[%d]:%d\n",i,v[i]);			
 		}		
@@ -212,68 +182,65 @@ __host__ double wtime() {
 
 
 
+__device__ double ceild(double num){	
+	int inum = (int)num;
+    if (num == (float)inum) {
+        return inum;
+    }
+    return inum + 1;
+}
 
+// A função recebe vetores crescentes v[p..q-1] 
+// e v[q..r-1] e rearranja v[p..r-1] em ordem 
+// crescente.
+__device__ void intercala (int p, int q, int r, int *v) 
+{
+   int *w;                                 //  1
+   w =(int *)malloc((r-p) * sizeof(int));  //  2
+   int i = p, j = q;                       //  3
+   int k = 0;                              //  4
 
+   while (i < q && j < r) {                //  5
+      if (v[i] <= v[j])  w[k++] = v[i++];  //  6
+      else  w[k++] = v[j++];               //  7
+   }                                       //  8
+   while (i < q)  w[k++] = v[i++];         //  9
+   while (j < r)  w[k++] = v[j++];         // 10
+   for (i = p; i < r; ++i)  v[i] = w[i-p]; // 11
+   free (w);                               // 12
+}
 
+__global__ void GPU_merge (int *vet_d, int vet_size,int nthreads){
+	int x = threadIdx.x;
+	if(x!=0)return;
+	printf("[GPU_merge] global_size_vet:%3d\n",global_size_vet);
+	printf("[GPU_merge] nthreads:%3d\n",nthreads);
+	int m = ceild((double)vet_size/(double)2);//Divide o vetor em duas partes [0][1][2] [3][4]
+	int n = vet_size - m;
+	int *vet1 = &vet_d[0];
+	int *vet2 = &vet_d[m];
+	printf("1[%d--%d]\n",0,m-1);
+	printf("2[%d--%d]\n",m,vet_size-1);
 
+	intercala(0,m,vet_size,vet_d);
 
+	printf("vet1:\n");
+	for(int k=0;k<m;k++){
+		printf("%4d",vet_d[k]);
+	}
+	printf("\n");
 
+	printf("vet2:\n");
+	for(int k=m;k<vet_size;k++){
+		printf("%4d",vet_d[k]);
+	}
+	printf("\n");
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*__global__ void GPU_sort (int *vet_d, int vet_size,int nthreads) {
-   
-
-   int k = threadIdx.x;   
-   printf("Nucleo %d\n",k );
-   int part = vet_size / nthreads; //== cada trede ordenara quatro posições do vetor[40]
-   
-   /**
-		0 < i=0 < 4 .... 4 < i=1 < 8 .... 8 < i=2 < 12 ... 12 < i=3 < 18
-   /
-   int a = k*part;
-   int b = k*part+part;
-   int i=0,j=0;
-   int min_idx=0,temp;
-   for(i=a;i<b;i++){
-   		min_idx = i;
-   		for(j=i+1;j<b;j++){
-   			if(vet_d[j]<vet_d[min_idx]){
-   				min_idx = j;
-   			}
-   		}
-   		temp = 0;
-   		temp = vet_d[min_idx];
-   		vet_d[min_idx] = vet_d[i];
-   		vet_d[i] = temp;	
-   }
-
-   
-   
-}*/
+	printf("vet ordenado:\n");
+	for(int k=0;k<vet_size;k++){
+		printf("%4d",vet_d[k]);
+	}
+	printf("\n");
+	//merge(vet1,m,vet2,n);
+	
+}
