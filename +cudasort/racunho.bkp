@@ -1,0 +1,31 @@
+// 0 <= x=0 < 5 ... 5 <= x=1 <= 10
+int n = global_size_vet/global_nr_nucleos; // n = sub_arr_size	
+int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
+int resto=global_size_vet%global_nr_nucleos;
+if((global_size_vet%global_nr_nucleos!=0)&&(x==global_nr_nucleos-1)){
+	n+=resto;
+}
+//int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
+int *sub_arr = (int *)malloc(n * sizeof(int));// Cria na memória um espaço para um sub_array
+
+//sub_array recebe a referencia da posição inicial do vetor global
+//sub_arr = &global_vet_device[a];
+int j=0;
+for(int i=a;i<a+n;i++,j++){
+	sub_arr[j]=global_vet_device[i];
+}
+//memcpy(&sub_arr[0],&global_vet_device[a],sizeof(int)*n);
+
+int m = get_max_val(sub_arr, n); 
+//iteração para cada dígito, no caso de um int muito grande esse for vai ocorrer 2^32 -> (10 casas) 
+for (int exp = 1; m / exp > 0; exp *= 10) {
+	sort_subarray(&sub_arr[0], n, exp); 
+}	
+
+j=0;
+for(int i=a;i<a+n;i++,j++){
+	global_vet_device[i]=sub_arr[j];
+}
+
+	return 0;
+}
