@@ -58,7 +58,7 @@ int main (int argc, char ** argv) {
 	GPU_print<<<1,1>>>();
 	cudaDeviceSynchronize();
 
-	/*
+	
 	while(nthreads>1){
 		
 		nthreads = ceil((double)nthreads/(double)2);
@@ -70,7 +70,7 @@ int main (int argc, char ** argv) {
 		//cudaDeviceSynchronize();
 	}	
 	cudaDeviceSynchronize();
-	*/
+	/**/
 	double e_time = wtime();
 	printf("Time:%f (s)\n", e_time-s_time);
 	

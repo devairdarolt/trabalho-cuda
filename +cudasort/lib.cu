@@ -37,10 +37,13 @@ __device__ long sort_array(long x);
 __device__ void intercala (long p, long q, long r, long *v);
 
 // CODE
-__device__ void sort_subarray(long arr[], long n, long exp) 
+__device__ void sort_subarray(long *arr, long n, long exp) 
 { 
 	//long output[n]; // output array 
 	long *output = (long*)malloc(n * sizeof(long));
+	if(output==NULL){
+		printf("\033[0;31m Erro ao alocar memória na placa de vídeo\n \e[m");
+	}
 	long i, count[10] = { 0 }; 
 	//printf("sort_subarray[arr[0]]:%d\n", arr[0]);
 	// Store count of occurrences in count[] 
@@ -66,7 +69,7 @@ __device__ void sort_subarray(long arr[], long n, long exp)
 		
 }
 
-__device__ long get_max_val(long arr[], long n) 
+__device__ long get_max_val(long *arr, long n) 
 { 
 	long mx = arr[0]; 
 	for (long i = 1; i < n; i++) 
@@ -91,31 +94,37 @@ __device__ long sort_array(long x){
 	global_part[x].n=n;
 	//set do vetor de particoes;	
 	//long a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
-	long *sub_arr = (long *)malloc(n * sizeof(long));// Cria na memória um espaço para um sub_array
+	long *sub_arr =NULL;
+	/*long *sub_arr = (long *)malloc(n * sizeof(long));// Cria na memória um espaço para um sub_array
 	if(!sub_arr){
 		printf("\033[0;31m Erro ao alocar sub array\n \e[m");
 	}
+	*/
 	//printf("Part[%d]:n[%d] [%d <= x <= %d]\n",x,n,a,b);
 	//sub_array recebe a referencia da posição inicial do vetor global
-	//sub_arr = &global_vet_device[a];
-	long j=0;
-	long aux;
-	//printf("\n");
-	for(long i=a;i<=b;i++,j++){
-		aux = global_vet_device[i];
-		sub_arr[j]=aux;			
-	}
-
-	long m = get_max_val(sub_arr, n); 
+	sub_arr = &global_vet_device[a];
+	
+	/*
+		long j=0;
+		long aux;
+		//printf("\n");
+		for(long i=a;i<=b;i++,j++){
+			aux = global_vet_device[i];
+			sub_arr[j]=aux;			
+		}
+	*/
+	long m = get_max_val(&sub_arr[0], n); 
 	//iteração para cada dígito, no caso de um long muito grande esse for vai ocorrer 2^32 -> (10 casas) 
 	for (long exp = 1; m / exp > 0; exp *= 10) {
 		sort_subarray(&sub_arr[0], n, exp); 
 	}	
 
-	j=0;
-	for(long i=a;i<=b;i++,j++){
-		global_vet_device[i]=sub_arr[j];
-	}
+	/*
+		j=0;
+		for(long i=a;i<=b;i++,j++){
+			global_vet_device[i]=sub_arr[j];
+		}
+	*/
 
 	return 0;
 }
