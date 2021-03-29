@@ -8,9 +8,9 @@
 
 
 int main (int argc, char ** argv) {
-	int nthreads = 3;
-	int nblocos = 1;
-	int vet_size = 12;
+	long nthreads = 3;
+	//long nblocos = 1;
+	long vet_size = 12;
 
 	
 	if (argc == 3) {
@@ -18,63 +18,69 @@ int main (int argc, char ** argv) {
 		vet_size = atoi(argv[2]);
 	}else{
 		printf ("./main <nthreads> <vet_size>\n");
-		printf ("Caso não haja passagem de parâmetros, nthreads=%d e vet_size=%d\n",nthreads,vet_size);
+		printf ("Caso não haja passagem de parâmetros, nthreads=%ld e vet_size=%ld\n",nthreads,vet_size);
 	} 
-
+	printf("Ordenando %3ld Kbytes\n",(vet_size*4)/1024);
 	//vetores do host	
-	int *vet_desordenado=NULL, *vet_ordenado=NULL;
-	vet_desordenado = criar_vetor_desordenado(vet_desordenado,vet_size);//aloca vetor em host
-	cudaMallocHost((void **) &vet_ordenado, vet_size*sizeof(int));
+	long *host_vet=NULL, *device_vet=NULL;
+	host_vet = criar_vetor_desordenado(host_vet,vet_size);//aloca vetor em host
+	cudaMallocHost((void **) &device_vet, vet_size*sizeof(long));
 	//printf("Vetor desordenado\n");
-	vet_imprimir(vet_desordenado,vet_size); 
+	printf("Vetor criado..\n");
+	vet_imprimir(host_vet,vet_size); 
 
-	int *d_nr_part,  h_nr_part;
-	cudaMalloc((void**)&d_nr_part, sizeof(int));// aloca vetor na memória global da placa
-	//Data *d_last_part, h_last_part;
-	//cudaMalloc((void**)&d_last_part, sizeof(Data));// aloca vetor na memória global da placa
+	
 
-	int *dev_vet =NULL;
-	cudaMalloc((void**)&dev_vet,vet_size * sizeof(int));// aloca vetor na memória global da placa
-	cudaMemcpy (dev_vet, vet_desordenado, vet_size*sizeof(int), cudaMemcpyHostToDevice);
+	long *dev_vet =NULL;
+	cudaMalloc((void**)&dev_vet,vet_size * sizeof(long));// aloca vetor na memória global da placa
+	cudaMemcpy (dev_vet, host_vet, vet_size*sizeof(long), cudaMemcpyHostToDevice);
+	/*for(long i=0;i<vet_size;i++){
+		cudaMemcpy (&dev_vet[i], &host_vet[i], sizeof(long), cudaMemcpyHostToDevice);
+	}
+	*/
+	printf("Dados copiados para a placa de video %3f MB\n",(double)(vet_size*sizeof(long))/1024/1024);
 	//Cada CUDA core ordena uma partição de DEV_VET
 	//resulta em um único vetor de partições ordenadas
 	double s_time = wtime();	
 	
+	//cudaMemcpy (device_vet, dev_vet, vet_size*sizeof(long), cudaMemcpyDeviceToHost);		
+	
 	GPU_set_globals<<<1,1>>>(dev_vet, vet_size,nthreads);		
 	cudaDeviceSynchronize();
+	
+	printf("Teste de copia vetor grande..n:%ld\n",vet_size);
+	GPU_print<<<1,1>>>();
+	cudaDeviceSynchronize();
 
+	printf("\n\n\nGPU_sort\n");
 	GPU_sort<<<1,nthreads>>>(nthreads);	
 	cudaDeviceSynchronize();	
-		cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);			
-		vet_imprimir(vet_ordenado,vet_size); 
-	//GPU_get_nr_partitions<<<1,1>>>(d_nr_part);// Busca o nr de partições resultantes na operação de sort	
-	cudaDeviceSynchronize();	
-	//cudaMemcpy (&h_nr_part, d_nr_part, sizeof(int), cudaMemcpyDeviceToHost);
-	//printf("particoes para mesclar %d\n",h_nr_part);
-	
+	GPU_print<<<1,1>>>();
+	cudaDeviceSynchronize();
+
+	/*
 	while(nthreads>1){
+		
 		nthreads = ceil((double)nthreads/(double)2);
+		cudaDeviceSynchronize();
 		GPU_merge<<<1,nthreads>>>(nthreads);	
 		cudaDeviceSynchronize();
-		cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);	
-		vet_imprimir(vet_ordenado,vet_size); 
-
-	}
-	
-	
-	//GPU_get_nr_partitions<<<1,1>>>(d_nr_part);// Busca o nr de partições resultantes na operação de sort
-	//cudaDeviceSynchronize();
-	//cudaMemcpy (&h_nr_part, d_nr_part, sizeof(int), cudaMemcpyDeviceToHost);
-
-
-
-
+		//printf("\n\n\nPos GPU_merge\n");
+		//GPU_print<<<1,1>>>();
+		//cudaDeviceSynchronize();
+	}	
 	cudaDeviceSynchronize();
+	*/
 	double e_time = wtime();
 	printf("Time:%f (s)\n", e_time-s_time);
-	cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);	
-	printf("Vetor parcialmente ordenado\n");
-	vet_imprimir(vet_ordenado,vet_size); 
+	
+	printf("\noperacao finalizada\n");
+	GPU_print<<<1,1>>>();
+	cudaDeviceSynchronize();
+	
+	//free(host_vet);
+	cudaFree(device_vet);
+	GPU_reset<<<1,1>>>();
 	return 0;
 }
 

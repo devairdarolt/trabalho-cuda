@@ -38,8 +38,7 @@ __device__ int list_pop_first(Lista *l, void *data){
 		if(l->root!=NULL)
 			l->root->privious=NULL;
 		return 1;	
-	}
-	return 0;
+	}	
 }	
 __device__ int list_push_last(Lista *l,void *data){	
     if(list_is_empty(*l)){        
