@@ -84,11 +84,14 @@ __device__ int sort_array(int x){
 	// a          b     a           b
 	// 0 <= x=0 < 5 ... 5 <= x=1 <= 10
 	int n =(int) ceild((double)global_size_vet/(double)global_nr_nucleos); // arredonda pra cima
+	printf("n:%d\n",n);
 	int a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
+	printf("a:%d\n",a);
 	if((global_size_vet%global_nr_nucleos!=0)&&(x==global_nr_nucleos-1)){	
 		n=global_size_vet-a;		
 	}
 	int b = a +n;	
+	printf("b:%d\n",b);
 	int *sub_arr = (int *)malloc(n * sizeof(int));// Cria na memória local um array de n elementos
 	printf("Part[%d]:n[%d] [%d <= x < %d]\n",x,n,a,b);
 	
@@ -137,7 +140,7 @@ __device__ int *GPU_get_part(int *vet_d, int vet_size,int nthreads){
 
 __global__ void GPU_sort (int *vet_d, int vet_size,int nthreads) {
 	int x = threadIdx.x;
-	
+	printf("[GPU_sort]\n");
 	//seta as variáveis globais
 	
 

@@ -8,9 +8,9 @@
 
 
 int main (int argc, char ** argv) {
-	int nthreads = 3;
+	int nthreads = 2;
 	int nblocos = 1;
-	int vet_size = 12;
+	int vet_size = 5;
 
 	
 	if (argc == 3) {
