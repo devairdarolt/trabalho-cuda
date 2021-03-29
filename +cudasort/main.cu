@@ -8,9 +8,9 @@
 
 
 int main (int argc, char ** argv) {
-	int nthreads = 2;
+	int nthreads = 3;
 	int nblocos = 1;
-	int vet_size = 5;
+	int vet_size = 12;
 
 	
 	if (argc == 3) {
@@ -28,38 +28,53 @@ int main (int argc, char ** argv) {
 	//printf("Vetor desordenado\n");
 	vet_imprimir(vet_desordenado,vet_size); 
 
-	
+	int *d_nr_part,  h_nr_part;
+	cudaMalloc((void**)&d_nr_part, sizeof(int));// aloca vetor na memória global da placa
+	//Data *d_last_part, h_last_part;
+	//cudaMalloc((void**)&d_last_part, sizeof(Data));// aloca vetor na memória global da placa
+
 	int *dev_vet =NULL;
 	cudaMalloc((void**)&dev_vet,vet_size * sizeof(int));// aloca vetor na memória global da placa
 	cudaMemcpy (dev_vet, vet_desordenado, vet_size*sizeof(int), cudaMemcpyHostToDevice);
 	//Cada CUDA core ordena uma partição de DEV_VET
 	//resulta em um único vetor de partições ordenadas
+	double s_time = wtime();	
 	
-	//Set global propriedades
-	GPU_set_global_prop<<<1,1>>>(dev_vet, vet_size,nthreads);
+	GPU_set_globals<<<1,1>>>(dev_vet, vet_size,nthreads);		
+	cudaDeviceSynchronize();
+
+	GPU_sort<<<1,nthreads>>>(nthreads);	
+	cudaDeviceSynchronize();	
+		cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);			
+		vet_imprimir(vet_ordenado,vet_size); 
+	//GPU_get_nr_partitions<<<1,1>>>(d_nr_part);// Busca o nr de partições resultantes na operação de sort	
+	cudaDeviceSynchronize();	
+	//cudaMemcpy (&h_nr_part, d_nr_part, sizeof(int), cudaMemcpyDeviceToHost);
+	//printf("particoes para mesclar %d\n",h_nr_part);
 	
-	//Ordena sub arrays
-	double s_time = wtime();
-	GPU_sort<<<1,nthreads>>>(dev_vet, vet_size,nthreads);			
+	while(nthreads>1){
+		nthreads = ceil((double)nthreads/(double)2);
+		GPU_merge<<<1,nthreads>>>(nthreads);	
+		cudaDeviceSynchronize();
+		cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);	
+		vet_imprimir(vet_ordenado,vet_size); 
+
+	}
+	
+	
+	//GPU_get_nr_partitions<<<1,1>>>(d_nr_part);// Busca o nr de partições resultantes na operação de sort
+	//cudaDeviceSynchronize();
+	//cudaMemcpy (&h_nr_part, d_nr_part, sizeof(int), cudaMemcpyDeviceToHost);
+
+
+
+
 	cudaDeviceSynchronize();
 	double e_time = wtime();
-
-	
-	//Mescla sub arrays
-	GPU_merge<<<1,1>>>(dev_vet, vet_size,nthreads);	
-	// Agora precisa fazer o merge entre as partições	
-	// Para cada par de partição faça o merge até que reste apenas uma partição
-	/*for(int i=nthreads/2;i>=1;i=i/2){
-		GPU_merge<<<1,i>>>(dev_vet, vet_size,i);	
-
-	}*/
 	printf("Time:%f (s)\n", e_time-s_time);
-	cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);
-	
+	cudaMemcpy (vet_ordenado, dev_vet, vet_size*sizeof(int), cudaMemcpyDeviceToHost);	
 	printf("Vetor parcialmente ordenado\n");
 	vet_imprimir(vet_ordenado,vet_size); 
-
-
 	return 0;
 }
 
