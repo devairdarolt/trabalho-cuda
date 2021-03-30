@@ -12,3 +12,5 @@ nvcc  *.o
 
 mv 'a.out' main
 rm -f *.o  *.map *.result
+
+clear

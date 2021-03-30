@@ -11,7 +11,7 @@ extern __global__ void GPU_reset();
 
 extern __global__ void GPU_print();
 
-extern __global__ void GPU_sort (long nthreads); 
+extern __global__ void GPU_call_sort (long nthreads); 
 
 extern __global__ void GPU_get_nr_partitions(long *d_nr_part);
 
