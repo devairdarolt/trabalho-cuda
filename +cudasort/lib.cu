@@ -6,20 +6,26 @@
 #include <sys/time.h>
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// --- VARIÁVEIS GLOBAIS                                                                                                              //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-__device__ Data * global_part=NULL;
-__device__ long global_nr_part=0;
-__device__  long * global_vet_device=NULL;
+__device__ Data * global_part=NULL; //Array global para guardar os índices de partições préordenadas
+__device__ long global_nr_part=0;   //Tamanho do array de particoes;
+__device__  long * global_vet_device=NULL; //Array global para guardar o vetor a ser ordenado
 __device__  long global_size_vet=0;
 __device__  long global_nr_nucleos=0;
 
 
 
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// --- FUNÇÕES PRIVADAS (Não acessível para o programa main)                                                                          //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// FUNÇÕES PRIVADAS (Não acessível para o programa main)
-__device__ void swap(long* a, long* b);
+__device__ int is_sort(long * arr,long n);
+
 
 __device__ double ceild(double num);
 
@@ -29,107 +35,21 @@ __device__ long get_max_val(long arr[], long n);
 
 __device__ long radix_sort_array(long x);
 
+
+__device__ void swap(long* a, long* b);
+
+__device__ void heapify(long *arr, long n, long i);
+
+__device__ void heapSort(long *arr, long n);
+
 __device__ long heap_sort_array(long x);
+
 
 __device__ void intercala (long p, long q, long r, long *v);
 
 __device__ void print_erro(const char *func,const char *msg);
 
 __device__ void print_sucess(const char *func,const char *msg);
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// --- COMB SORT                                                                                                                      //
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// To find gap between elements
-__device__ long getNextGap(long gap)
-{
-    // Shrink gap by Shrink factor
-    gap = (gap*10)/13;
- 
-    if (gap < 1)
-        return 1;
-    return gap;
-}
- 
-// Function to sort a[0..n-1] using Comb Sort
-__device__ void combSort(long *a, long n)
-{
-    // Initialize gap
-    long gap = n;
- 
-    // Initialize swapped as true to make sure that
-    // loop runs
-    bool swapped = true;
- 
-    // Keep running while gap is more than 1 and last
-    // iteration caused a swap
-    while (gap != 1 || swapped == true)
-    {
-        // Find next gap
-        gap = getNextGap(gap);
- 
-        // Initialize swapped as false so that we can
-        // check if swap happened or not
-        swapped = false;
- 
-        // Compare all elements with current gap
-        for (long i=0; i<n-gap; i++)
-        {
-            if (a[i] > a[i+gap])
-            {
-                swap(&a[i], &a[i+gap]);
-                swapped = true;
-            }
-        }
-    }
-}
-
-__device__ int is_sort(long * arr,long n){	
-	long ordenado = 0;	
-	for(long i=1;i<n;i++){
-		if(arr[i-1]>arr[i]){
-			printf("arr[%ld]>arr[%ld]--[%ld,%ld]\n",i-1,i,arr[i-1],arr[i]);
-			ordenado ++;			
-		}		
-	}
-	if(ordenado==0){
-		printf("\nSub particao ordenada!\n");
-		return 1;
-	}else{
-		printf("\nSub particao desordenada, %ld posicoes fora de ordem!\n",ordenado);
-		return 0;
-	}	
-}
-
-__device__ long comb_sort_array(long x){
-	
-	//if(x!=0) return 0; //para facilitar a programação 
-	
-	// 0 <= x=0 < 5 ... 5 <= x=1 <= 10
-	long n =(long) ceild((double)global_size_vet/(double)global_nr_nucleos); // arredonda pra cima
-	long a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
-
-	//printf("global_size_vet[%ld], global_nr_nucleos[%ld]\n",global_size_vet,global_nr_nucleos);
-	if((global_size_vet%global_nr_nucleos!=0)&&(x==global_nr_nucleos-1)){	
-		n=global_size_vet-a;		
-	}
-	
-	long b = (a +n)-1;
-	global_part[x].a =a;
-	global_part[x].b=b;
-	global_part[x].n=n;
-	//printf("x[%ld] a[%ld] b[%ld] n[%ld]\n",x,a,b,n);
-	//printf("Part[%d]:n[%d] [%d <= x <= %d]\n",x,n,a,b);
-	
-	long *sub_arr =NULL;	
-	sub_arr = &global_vet_device[a];
-	combSort(&sub_arr[a], n);	
-	is_sort(&sub_arr[a], n);
-
-	
-
-	return 0;
-}
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -221,10 +141,11 @@ __device__ void sort_subarray(long *arr, long n, long exp)
 	//long output[n]; // output array 
 	long *output = (long*)malloc(n * sizeof(long));
 	if(output==NULL){
-		print_erro("sort_subarray","Erro ao alocar memória na placa de vídeo");		
+		
+		print_erro("sort_subarray","Erro ao alocar memória na placa de vídeo para 'output'");				
 	}
 	long i, count[10] = { 0 }; 
-	//printf("sort_subarray[arr[0]]:%d\n", arr[0]);
+	
 	// Store count of occurrences in count[] 
 	for (i = 0; i < n; i++) 
 		count[(arr[i] / exp) % 10]++; 
@@ -244,7 +165,8 @@ __device__ void sort_subarray(long *arr, long n, long exp)
 	// contains sorted numbers according to current digit 
 	for (i = 0; i < n; i++){
 		arr[i] = output[i]; 
-	} 
+	}
+	free(output); 
 		
 }
 
@@ -257,9 +179,6 @@ __device__ long get_max_val(long *arr, long n)
 	return mx; 
 } 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// --- DIVIDE AND CALL SORT_FUNCTION                                                                                                  //
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 __device__ long radix_sort_array(long x){
 	
 	//if(x!=0) return 0; //para facilitar a programação 
@@ -298,7 +217,7 @@ __device__ long radix_sort_array(long x){
 	long m = get_max_val(&sub_arr[0], n); 
 	//iteração para cada dígito, no caso de um long muito grande esse for vai ocorrer 2^32 -> (10 casas) 
 	for (long exp = 1; m / exp > 0; exp *= 10) {
-		sort_subarray(&sub_arr[0], n, exp); 
+		sort_subarray(&sub_arr[0], n, exp); // primeiro faz o sort pelo bit 0, bit 1 ... até bit exp 
 	}	
 
 	/*
@@ -331,9 +250,8 @@ __global__ void GPU_call_sort (long nthreads) {
 	
 	
 	//Inicia particionamento e ordenação
-	//radix_sort_array(x);	//TODO anteriormente
-	//comb_sort_array(x);
-	heap_sort_array(x);	
+	radix_sort_array(x);	//TODO anteriormente
+	//heap_sort_array(x);	
 	
 
 }
@@ -348,13 +266,17 @@ __global__ void GPU_print(){
 		print_erro("GPU_print","os dados não foram copiados para a memória da placa de video...");
 	}
 	
-	printf("\n20 primeiros:");
-	for(int i=0;i<20;i++){
+	int max_index = global_size_vet;
+	if(max_index>20){
+		max_index = 20;
+	}
+	printf("\n%d primeiros:",max_index);
+	for(int i=0;i<max_index;i++){
 		printf(" %ld ",global_vet_device[i]);
 	}
-	printf("\n20 ultimos:");
+	printf("\n%d ultimos:",max_index);
 	long sum=0;
-	for(int i=global_size_vet-20;i<global_size_vet;i++){
+	for(int i=global_size_vet-max_index;i<global_size_vet;i++){
 		printf(" %ld ",global_vet_device[i]);
 		sum+=global_vet_device[i];
 	}	
@@ -389,7 +311,7 @@ __host__ long *criar_vetor_desordenado(long *v,long vet_size){
 	//inicia valores do vetor desordenado
 	srand(time(0));
 	for(long i=0;i<vet_size;i++){
-		v[i]= rand() % 10000;// (0 <= rand <= vet_size)
+		v[i]= rand() % 100000;// (0 <= rand <= vet_size)
 	}
 	return v;
 }
@@ -406,14 +328,18 @@ __host__ void vet_imprimir(long *v,long vet_size){
 	//printf("primeiro elemento:%d\n",v[0]);
 	//printf("ultimo elemento:%d\n",v[vet_size-1]);	
 	printf("vet_d: ");
+	long max_index = vet_size;
+	if(max_index>20){
+		max_index = 20;
+	}
 	if(1==1){
-		printf("\n20 primeiros\n");
-		for(long i=0;i<20;i++){
-			printf("%10ld,",v[i]);
+		printf("\n%ld primeiros\n",max_index);
+		for(long i=0;i<max_index;i++){
+			printf(" %ld, ",v[i]);
 		}
-		printf("\n20 ultimos\n");
-		for(long i=vet_size-20;i<vet_size;i++){
-			printf("%10ld,",v[i]);
+		printf("\n%ld ultimos\n",max_index);
+		for(long i=vet_size-max_index;i<vet_size;i++){
+			printf(" %ld, ",v[i]);
 		}
 		
 	}
@@ -428,11 +354,11 @@ __host__ void vet_imprimir(long *v,long vet_size){
 		value = v[i];
 	}
 	if(ordenado){
-		printf("\nVETOR ORDENADO!\n");
+		//printf("\nVETOR ORDENADO!\n");
 	}else{
-		printf("\nVETOR DESORDENADO!\n");
+		//printf("\nVETOR DESORDENADO!\n");
 	}	
-	printf("\n");
+	//printf("\n");
 
 
 }
@@ -456,6 +382,7 @@ __device__ double ceild(double num){
 // A função recebe vetores crescentes v[p..q-1] 
 // e v[q..r-1] e rearranja v[p..r-1] em ordem 
 // crescente.
+//Tem um custo maior de espaço pois cada thread cria um vetor de tamanho n
 __device__ void intercala (long p, long q, long r, long *v) 
 {
    long *w;                                 //  1
@@ -556,4 +483,22 @@ __device__ void print_erro(const char *func,const char *msg){
 }
 __device__ void print_sucess(const char *func,const char *msg){
 	printf("\033[0;32m [%s]--%s\e[m\n",func,msg);
+}
+
+
+__device__ int is_sort(long * arr,long n){	
+	long ordenado = 0;	
+	for(long i=1;i<n;i++){
+		if(arr[i-1]>arr[i]){
+			printf("arr[%ld]>arr[%ld]--[%ld,%ld]\n",i-1,i,arr[i-1],arr[i]);
+			ordenado ++;			
+		}		
+	}
+	if(ordenado==0){
+		printf("\nSub particao ordenada!\n");
+		return 1;
+	}else{
+		printf("\nSub particao desordenada, %ld posicoes fora de ordem!\n",ordenado);
+		return 0;
+	}	
 }

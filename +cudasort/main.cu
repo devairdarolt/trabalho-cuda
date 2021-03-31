@@ -26,7 +26,7 @@ int main (int argc, char ** argv) {
 	host_vet = criar_vetor_desordenado(host_vet,vet_size);//aloca vetor em host
 	
 	//printf("Vetor desordenado\n");
-	printf("Vetor criado..\n");
+	printf("Teste imprimir..\n");
 	vet_imprimir(host_vet,vet_size); 
 
 	

@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+clear
+
 export PATH=/usr/bin/:$PATH
 #set dir para nvcc cuda 7
 #CC = nvcc
@@ -11,6 +13,5 @@ nvcc  --device-c *.cu
 nvcc  *.o	
 
 mv 'a.out' main
-rm -f *.o  *.map *.result
+rm -f *.o  *.map *.result *.log
 
-clear
