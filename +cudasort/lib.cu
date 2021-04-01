@@ -1,3 +1,4 @@
+
 #include "lib.h"
 
 #include <cuda.h>
@@ -6,9 +7,9 @@
 #include <sys/time.h>
 
 
-extern long h_global_nr_part;   //Tamanho do array de particoes;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// --- VARIÁVEIS GLOBAIS                                                                                                              //
+// --- VARIÁVEIS GLOBAIS DA PLACA DE VIDEO                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -127,7 +128,7 @@ __device__ long heap_sort_array(long x){
 	__syncthreads();
 	
 	//if(x!=1) return 0; //para facilitar a programação 
-	is_sort(&sub_arr[0], n);
+	is_sort(&sub_arr[0], n);	
 	return 1;
 }
 
@@ -237,6 +238,7 @@ __global__ void GPU_set_globals(long *vet_d, long vet_size,long nthreads){
 	global_vet_device = vet_d;
 	global_size_vet = vet_size;
 	global_nr_nucleos = nthreads;
+	global_nr_part = nthreads;
 	global_part = (Data *)malloc(nthreads * sizeof(Data));
 	if(global_part==NULL){
 		print_erro("GPU_set_globals","Erro ao alocar memória para 'global_part' na placa de video");
@@ -249,8 +251,18 @@ __global__ void GPU_call_sort (long nthreads) {
 	
 	
 	//Inicia particionamento e ordenação
-	radix_sort_array(x);	//TODO anteriormente
-	//heap_sort_array(x);	
+	if((global_size_vet<1000000)){
+		if(x==0){
+			printf("\nutilizando [radix sort]\n");
+		}
+		radix_sort_array(x);	//TODO anteriormente
+	}else{
+		if(x==0){
+			printf("\nUtilizando[heap sort]\n");
+		}
+		heap_sort_array(x);	
+
+	}
 	
 
 }
@@ -328,36 +340,29 @@ __host__ void vet_imprimir(long *v,long vet_size){
 	//printf("ultimo elemento:%d\n",v[vet_size-1]);	
 	printf("vet_d: ");
 	long max_index = vet_size;
-	if(max_index>20){
-		max_index = 20;
+	if(max_index>50){
+		max_index = 50;
 	}
-	if(1==1){
-		printf("\n%ld primeiros\n",max_index);
-		for(long i=0;i<max_index;i++){
-			printf(" %ld, ",v[i]);
-		}
-		printf("\n%ld ultimos\n",max_index);
-		for(long i=vet_size-max_index;i<vet_size;i++){
-			printf(" %ld, ",v[i]);
-		}
-		
-	}
-	long value = v[0];
-	long ordenado = 1;
 	
-	for(long i=1;i<vet_size;i++){
-		if(v[i]<value){
-			ordenado =0;
-			break;
-		}
-		value = v[i];
+	printf("\n%ld primeiros\t",max_index);
+	for(long i=0;i<max_index;i++){
+		printf(" %ld, ",v[i]);
 	}
+	if(vet_size>50){
+		printf("\n%ld Ultimas\t",max_index);
+		for(long i=vet_size-50;i<vet_size;i++){
+			printf(" %ld, ",v[i]);
+		}		
+	}		
+	printf("\n");
+
+	int ordenado = h_is_sort(v,vet_size);	
 	if(ordenado){
-		//printf("\nVETOR ORDENADO!\n");
+		h_print_sucess("vet_imprimir","ORDENADO!");
+		
 	}else{
-		//printf("\nVETOR DESORDENADO!\n");
+		h_print_erro("vet_imprimir","DESORDENADO!");		
 	}	
-	//printf("\n");
 
 
 }
@@ -401,17 +406,6 @@ __device__ void intercala (long p, long q, long r, long *v)
    for (i = p; i < r; ++i)  v[i] = w[i-p]; // 11
    free (w);                               // 12
 }
-__global__ void GPU_get_nr_partitions(long *d_nr_part){
-	long count;
-	for(long i=0; i< global_nr_part;i++){
-		//if(global_part[i]!=NULL){
-		//}
-		count++;
-	}
-	*d_nr_part = count+1;
-	
-
-}
 
 __global__ void GPU_merge (long nr_thread){
 	long x = threadIdx.x;
@@ -442,7 +436,7 @@ __global__ void GPU_merge (long nr_thread){
 		xData->a=a1;
 		xData->b=b2;
 		xData->n=n1+n2;				
-		printf("\033[0;34m x[%ld]-{(a1:%ld,b1:%ld),(a2:%ld,b2:%ld)- merge----{a1:%ld,b2:%ld} - n:%ld}\e[m\n",x,a1,b1,a2,b2,xData->a,xData->b,xData->n);		
+		//printf("\033[0;34m x[%ld]-{(a1:%ld,b1:%ld),(a2:%ld,b2:%ld)- merge----{a1:%ld,b2:%ld} - n:%ld}\e[m\n",x,a1,b1,a2,b2,xData->a,xData->b,xData->n);		
 		intercala(a1,a2,a2+n2,global_vet_device);
 		if(!is_sort(&global_vet_device[a1],xData->n)){
 			print_erro("GPU_merge","A sub particao não esta ordenada");
@@ -455,7 +449,7 @@ __global__ void GPU_merge (long nr_thread){
 		xData->a=a1;
 		xData->b=b1;
 		xData->n=(b1+1)-a1;
-		printf("Part[%ld]-{(%ld,%ld) n:%ld- copiado}\n",x,a1,b1,xData->n);		
+		//printf("Part[%ld]-{(%ld,%ld) n:%ld- copiado}\n",x,a1,b1,xData->n);		
 		if(!is_sort(&global_vet_device[a1],xData->n)){
 			print_erro("GPU_merge","A sub particao não esta ordenada");
 		}		
@@ -489,22 +483,56 @@ __device__ int is_sort(long * arr,long n){
 	long ordenado = 0;	
 	for(long i=1;i<n;i++){
 		if(arr[i-1]>arr[i]){
-			printf("arr[%ld]>arr[%ld]--[%ld,%ld]\n",i-1,i,arr[i-1],arr[i]);
+			//printf("arr[%ld]>arr[%ld]--[%ld,%ld]\n",i-1,i,arr[i-1],arr[i]);
 			ordenado ++;			
 		}		
 	}
 	if(ordenado==0){
-		printf("\nSub particao ordenada!\n");
+		//printf("\nSub particao ordenada!\n");
 		return 1;
 	}else{
-		printf("\nSub particao desordenada, %ld posicoes fora de ordem!\n",ordenado);
+		//printf("\nSub particao desordenada, %ld posicoes fora de ordem!\n",ordenado);
 		return 0;
 	}	
 }
-
-extern __host__ void cpyGlobalsFromGpu(){
+//#####################################################################################################
+__global__ void GPU_get_d_part(Data *d_part){
+	memcpy(d_part,global_part,global_nr_part*sizeof(Data));
 	
-	//h_global_nr_part = 999;
+}
+__global__ void GPU_get_nr_part(long *d_nr_part){
+	//int erro_memcpy;	
+	*d_nr_part = global_nr_part;
+	//printf("d_nr_part %ld\n",*d_nr_part);
+
+}
+
+__global__ void GPU_get_global_vet(long * d_vet){
+	memcpy(d_vet,global_vet_device,global_size_vet * sizeof(long));
+}
+
+__host__ void h_print_erro(const char *func,const char *msg){
+	printf("\033[0;31m [%s]--%s\e[m\n",func,msg);
+}
+
+__host__ void h_print_sucess(const char *func,const char *msg){
+	printf("\033[0;32m [%s]--%s\e[m\n",func,msg);
 }
 
 
+__host__ int h_is_sort(long * arr,long n){	
+	long ordenado = 0;	
+	for(long i=1;i<n;i++){
+		if(arr[i-1]>arr[i]){
+			//printf("arr[%ld]>arr[%ld]--[%ld,%ld]\n",i-1,i,arr[i-1],arr[i]);
+			ordenado ++;			
+		}		
+	}
+	if(ordenado==0){
+		//printf("\nSub particao ordenada!\n");
+		return 1;
+	}else{
+		//printf("\nSub particao desordenada, %ld posicoes fora de ordem!\n",ordenado);
+		return 0;
+	}	
+}
