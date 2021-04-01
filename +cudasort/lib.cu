@@ -6,18 +6,17 @@
 #include <sys/time.h>
 
 
+extern long h_global_nr_part;   //Tamanho do array de particoes;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- VARIÁVEIS GLOBAIS                                                                                                              //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-__device__ Data * global_part=NULL; //Array global para guardar os índices de partições préordenadas
-__device__ long global_nr_part=0;   //Tamanho do array de particoes;
-__device__  long * global_vet_device=NULL; //Array global para guardar o vetor a ser ordenado
-__device__  long global_size_vet=0;
-__device__  long global_nr_nucleos=0;
-
-
+extern __device__ Data * global_part=NULL; //Array global para guardar os índices de partições préordenadas
+extern __device__ long global_nr_part=0;   //Tamanho do array de particoes;
+extern __device__  long * global_vet_device=NULL; //Array global para guardar o vetor a ser ordenado
+extern __device__  long global_size_vet=0;
+extern __device__  long global_nr_nucleos=0;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -502,3 +501,10 @@ __device__ int is_sort(long * arr,long n){
 		return 0;
 	}	
 }
+
+extern __host__ void cpyGlobalsFromGpu(){
+	
+	//h_global_nr_part = 999;
+}
+
+
