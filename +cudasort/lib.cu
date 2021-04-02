@@ -251,7 +251,7 @@ __global__ void GPU_call_sort (long nthreads) {
 	
 	
 	//Inicia particionamento e ordenação
-	if((global_size_vet<1000000)){
+	if((global_size_vet<2000000)){
 		if(x==0){
 			printf("\nutilizando [radix sort]\n");
 		}
@@ -308,31 +308,24 @@ __global__ void GPU_print(){
 // --- FUNÇÕES DE AUXILIARES                                                                                                          //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__host__ long *criar_vetor_desordenado(long *v,long vet_size){
-
-	if(v!=NULL){
-		printf("O vetor informado ja existe!\n");
-		return v;
-	}
+__host__ long *criar_vetor_desordenado(long vet_size){	
 	if(vet_size < 0){
 		printf("O tamanho do vetor tem que ser maior que 0\n");
 	}
 	printf("Alocando na memória do host\n");
-	if(v!=NULL){
-		free(v);
-	}
-	cudaMallocHost((void **) &v, vet_size*sizeof(long));	
-	if(v==NULL){
+	long *vet;
+	cudaMallocHost((void **) &vet, vet_size*sizeof(long));	
+	if(vet==NULL){
 		h_print_erro("criar_vetor_desordenado","Erro ao alocar memória 'cudaMallocHost'");
 	}
 	printf("memória alocada\n");
 	//inicia valores do vetor desordenado
 	srand(time(0));
 	for(long i=0;i<vet_size;i++){
-		v[i]= rand() % 100000;// (0 <= rand <= vet_size)
+		vet[i]= rand() % 100000;// (0 <= rand <= vet_size)
 	}
 	printf("Vetor aleatório gerado alocado\n");
-	return v;
+	return vet;
 }
 
 __host__ void vet_imprimir(long *v,long vet_size){
@@ -520,9 +513,9 @@ __global__ void GPU_get_global_vet(long *d_vet){
 	/* for(int i=0;i<global_size_vet;i++){
 		d_vet[i] =global_vet_device[i];
 	} */
-	d_vet = global_vet_device;
-	printf("d_vet[0] %d\n",d_vet[0]);
-	printf("global_vet_device[0] %d\n",global_vet_device[0]);
+	//d_vet = global_vet_device;
+	memcpy(d_vet,global_vet_device,global_size_vet*sizeof(long));
+	printf("d_vet[0] %d\n",d_vet[0]);	
 	//memcpy(d_vet,global_vet_device,global_size_vet * sizeof(long));
 }
 

@@ -27,16 +27,13 @@ void h_print_sucess(const char *func,const char *msg);
 
 void get_global_vet(){
 	
-	cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));
-	
+	cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
 	if(h_global_vet_device==NULL){		
 		h_print_erro("get_global_vet","Erro ao alocar d_vet");
 	}
 	
 	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
-	cudaDeviceSynchronize();
-	
-
+	cudaDeviceSynchronize();	
 	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
 	
 }
@@ -93,16 +90,9 @@ int main (int argc, char ** argv) {
 	} 
 
 	 
-	printf("Ordenando vetor de %ld elementos long - %3ld Kbytes\n",h_global_size_vet,(h_global_size_vet*8)/1024);
-	//vetores do host	
-	
-	criar_vetor_desordenado(h_global_vet_device,h_global_size_vet);//aloca vetor em host
-	
-	//printf("Vetor desordenado\n");
-	printf("Teste imprimir..\n");
-	vet_imprimir(h_global_vet_device,h_global_size_vet); 
-
-	
+	printf("Ordenando vetor de %ld elementos long - %f Kbytes\n",h_global_size_vet,((double)h_global_size_vet*sizeof(long))/(double)1024);	
+	h_global_vet_device =criar_vetor_desordenado(h_global_size_vet);//aloca vetor em host	
+	vet_imprimir(h_global_vet_device,h_global_size_vet); 	
 
 	long *dev_vet =NULL;
 	int erro = cudaMalloc((void**)&dev_vet,h_global_size_vet * sizeof(long));// aloca vetor na memória global da placa
@@ -118,11 +108,7 @@ int main (int argc, char ** argv) {
 		
 	
 	GPU_set_globals<<<1,1>>>(dev_vet, h_global_size_vet,nthreads);		
-	cudaDeviceSynchronize();
-	
-	//printf("Teste de copia vetor grande..n:%ld\n",h_global_size_vet);
-	//GPU_print<<<1,1>>>();
-	//cudaDeviceSynchronize();	
+	cudaDeviceSynchronize();	
 	
 	GPU_call_sort<<<1,nthreads>>>(nthreads);	
 	cudaDeviceSynchronize();	
@@ -130,18 +116,13 @@ int main (int argc, char ** argv) {
 	h_print_sucess("GPU_call_sort","GPU sort finalizado");
 	printf("Tempo levado para ordenar as sub particoes na GPU[%f]\n",g_time-s_time);
 	
-
 	
-
-	// MODO 2 - realiza o merge utilizando openMP
-	
-	
-	//Copia as variaveis globais da placa para a memoria do host
-	
+	//Copia as variaveis globais da placa para a memoria do host	
 	get_global_nr_part();
 	get_global_part();
 	get_global_vet();
 
+	vet_imprimir(h_global_vet_device,h_global_size_vet);
 	GPU_reset<<<1,1>>>();		
 	
 	//for(int test=0;test<2;test++){
@@ -181,9 +162,17 @@ int main (int argc, char ** argv) {
 	printf("\n");
 	double e_time = wtime();	
 	printf("Tempo total de ordenação:[%f]\n",e_time - s_time);
-	
-	free(h_global_part);
-	free(h_global_vet_device);
+	//cudaFree(dev_vet);
+	if(h_global_part!=NULL){
+		printf("free h_global_part\n");
+		cudaFreeHost(h_global_part);
+		//free(h_global_part);
+	}
+	if(h_global_vet_device!=NULL){
+		printf("free h_global_vet_device\n");
+		cudaFreeHost(h_global_vet_device);
+		//free(h_global_vet_device);
+	}
 
 	return 0;
 }

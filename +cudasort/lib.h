@@ -24,7 +24,7 @@ extern __global__ void GPU_call_sort (long nthreads);
 
 extern __host__ double wtime();
 
-extern __host__ long *criar_vetor_desordenado(long *v,long vet_size);
+extern __host__ long *criar_vetor_desordenado(long vet_size);
 
 extern __host__ void vet_imprimir(long *v,long vet_size);
 
