@@ -26,21 +26,18 @@ void h_print_sucess(const char *func,const char *msg);
 
 
 void get_global_vet(){
-	long *d_vet;
-	cudaMalloc((void**)&d_vet,h_global_size_vet* sizeof(Data));
-	if(d_vet==NULL){		
+	
+	cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));
+	
+	if(h_global_vet_device==NULL){		
 		h_print_erro("get_global_vet","Erro ao alocar d_vet");
 	}
-	GPU_get_global_vet<<<1,1>>>(d_vet);
+	
+	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
 	cudaDeviceSynchronize();
-	cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));
-	if(h_global_vet_device==NULL){		
-		h_print_erro("get_global_vet","Erro ao alocar h_global_vet_device");
-	}
+	
 
-	cudaMemcpy(&h_global_vet_device[0],&d_vet[0],h_global_size_vet * sizeof(long),cudaMemcpyDeviceToHost);	
-
-	//printf("h_global_vet_device\n");
+	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
 	
 }
 
@@ -71,48 +68,59 @@ void get_global_part(){
 }
 
 int main (int argc, char ** argv) {
+	//INICIALIZA VARIAVEIS GLOBIAS
+	h_global_nr_part=0;   //Tamanho do array de particoes;
+	h_global_part=NULL; //Array global para guardar os índices de partições préordenadas
+	h_global_vet_device=NULL; //Array global para guardar o vetor a ser ordenado
+	
+	h_global_size_vet=100000;	
+	h_global_nr_nucleos=0;
+	
+
+
 	long nthreads = 96;
 	h_global_nr_nucleos = nthreads;
 	//long nblocos = 1;
-	long vet_size = 100000000; //762.939453
+	
 
 	
 	if (argc == 3) {
 		nthreads = atoi(argv[1]);
-		vet_size = atoi(argv[2]);
+		h_global_size_vet = atoi(argv[2]);
 	}else{
-		printf ("./main <nthreads> <vet_size>\n");
-		printf ("Caso não haja passagem de parâmetros, nthreads=%ld e vet_size=%ld\n",nthreads,vet_size);
+		printf ("./main <nthreads> <h_global_size_vet>\n");
+		printf ("Caso não haja passagem de parâmetros, nthreads=%ld e h_global_size_vet=%ld\n",nthreads,h_global_size_vet);
 	} 
-	printf("Ordenando %3ld Kbytes\n",(vet_size*4)/1024);
+
+	 
+	printf("Ordenando vetor de %ld elementos long - %3ld Kbytes\n",h_global_size_vet,(h_global_size_vet*8)/1024);
 	//vetores do host	
-	long *host_vet=NULL;
-	h_global_size_vet = vet_size;
-	host_vet = criar_vetor_desordenado(host_vet,vet_size);//aloca vetor em host
+	
+	criar_vetor_desordenado(h_global_vet_device,h_global_size_vet);//aloca vetor em host
 	
 	//printf("Vetor desordenado\n");
 	printf("Teste imprimir..\n");
-	vet_imprimir(host_vet,vet_size); 
+	vet_imprimir(h_global_vet_device,h_global_size_vet); 
 
 	
 
 	long *dev_vet =NULL;
-	int erro = cudaMalloc((void**)&dev_vet,vet_size * sizeof(long));// aloca vetor na memória global da placa
+	int erro = cudaMalloc((void**)&dev_vet,h_global_size_vet * sizeof(long));// aloca vetor na memória global da placa
 	if(erro){
 		printf("\033[0;31m Erro ao alocar memória da placa de video...\n \e[m");
 	}
-	printf("Dados copiados para a placa de video %3f MB\n",(double)(vet_size*sizeof(long))/1024/1024);
-	cudaMemcpy (dev_vet, host_vet, vet_size*sizeof(long), cudaMemcpyHostToDevice);
+	printf("Dados copiados para a placa de video %3f MB\n",(double)(h_global_size_vet*sizeof(long))/1024/1024);
+	cudaMemcpy (dev_vet, h_global_vet_device, h_global_size_vet*sizeof(long), cudaMemcpyHostToDevice);
 	
 	//Cada CUDA core ordena uma partição de DEV_VET
 	//resulta em um único vetor de partições ordenadas
 	double s_time = wtime();	
 		
 	
-	GPU_set_globals<<<1,1>>>(dev_vet, vet_size,nthreads);		
+	GPU_set_globals<<<1,1>>>(dev_vet, h_global_size_vet,nthreads);		
 	cudaDeviceSynchronize();
 	
-	//printf("Teste de copia vetor grande..n:%ld\n",vet_size);
+	//printf("Teste de copia vetor grande..n:%ld\n",h_global_size_vet);
 	//GPU_print<<<1,1>>>();
 	//cudaDeviceSynchronize();	
 	
@@ -120,25 +128,13 @@ int main (int argc, char ** argv) {
 	cudaDeviceSynchronize();	
 	double g_time = wtime();	
 	h_print_sucess("GPU_call_sort","GPU sort finalizado");
-	printf("Tempo de ordenação da GPU[%f]\n",g_time-s_time);
-	//GPU_print<<<1,1>>>();
-	//cudaDeviceSynchronize();
+	printf("Tempo levado para ordenar as sub particoes na GPU[%f]\n",g_time-s_time);
+	
 
-	//MODO 1 - realiza o merge usando os cuda cores
-	/*************  UTILIZA MUITA MEMÓRIA DA PLACA DE VÍDEO
-	while(nthreads>1){
-		
-		nthreads = ceil((double)nthreads/(double)2);		
-		GPU_merge<<<1,nthreads>>>(nthreads);	
-		cudaDeviceSynchronize();
-		//printf("\n\n\nPos GPU_merge\n");
-		//GPU_print<<<1,1>>>();
-		//cudaDeviceSynchronize();
-	}		
-	/**/
+	
 
 	// MODO 2 - realiza o merge utilizando openMP
-	///////////// 
+	
 	
 	//Copia as variaveis globais da placa para a memoria do host
 	
@@ -146,10 +142,7 @@ int main (int argc, char ** argv) {
 	get_global_part();
 	get_global_vet();
 
-	GPU_reset<<<1,1>>>();	
-	int count = 100;	
-	
-	Data array_aux[h_global_nr_part];
+	GPU_reset<<<1,1>>>();		
 	
 	//for(int test=0;test<2;test++){
 	while(h_global_nr_part>1 ){
@@ -189,6 +182,8 @@ int main (int argc, char ** argv) {
 	double e_time = wtime();	
 	printf("Tempo total de ordenação:[%f]\n",e_time - s_time);
 	
+	free(h_global_part);
+	free(h_global_vet_device);
 
 	return 0;
 }

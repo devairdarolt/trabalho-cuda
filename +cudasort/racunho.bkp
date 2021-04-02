@@ -29,3 +29,18 @@ for(int i=a;i<a+n;i++,j++){
 
 	return 0;
 }
+
+
+///////////////////////////////////////////////////////////////////
+//MODO 1 - realiza o merge usando os cuda cores
+	/*************  UTILIZA MUITA MEMÓRIA DA PLACA DE VÍDEO
+	while(nthreads>1){
+		
+		nthreads = ceil((double)nthreads/(double)2);		
+		GPU_merge<<<1,nthreads>>>(nthreads);	
+		cudaDeviceSynchronize();
+		//printf("\n\n\nPos GPU_merge\n");
+		//GPU_print<<<1,1>>>();
+		//cudaDeviceSynchronize();
+	}		
+	/**/

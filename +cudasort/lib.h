@@ -47,4 +47,4 @@ extern __global__ void GPU_get_nr_part(long *d_nr_part);
 
 extern __global__ void GPU_get_d_part(Data *d_part);
 
-extern __global__ void GPU_get_global_vet(long * d_vet);
+extern __global__ void GPU_get_global_vet(long *d_vet);

@@ -317,13 +317,21 @@ __host__ long *criar_vetor_desordenado(long *v,long vet_size){
 	if(vet_size < 0){
 		printf("O tamanho do vetor tem que ser maior que 0\n");
 	}
-
+	printf("Alocando na memória do host\n");
+	if(v!=NULL){
+		free(v);
+	}
 	cudaMallocHost((void **) &v, vet_size*sizeof(long));	
+	if(v==NULL){
+		h_print_erro("criar_vetor_desordenado","Erro ao alocar memória 'cudaMallocHost'");
+	}
+	printf("memória alocada\n");
 	//inicia valores do vetor desordenado
 	srand(time(0));
 	for(long i=0;i<vet_size;i++){
 		v[i]= rand() % 100000;// (0 <= rand <= vet_size)
 	}
+	printf("Vetor aleatório gerado alocado\n");
 	return v;
 }
 
@@ -507,8 +515,15 @@ __global__ void GPU_get_nr_part(long *d_nr_part){
 
 }
 
-__global__ void GPU_get_global_vet(long * d_vet){
-	memcpy(d_vet,global_vet_device,global_size_vet * sizeof(long));
+__global__ void GPU_get_global_vet(long *d_vet){
+	//d_vet = global_vet_device;
+	/* for(int i=0;i<global_size_vet;i++){
+		d_vet[i] =global_vet_device[i];
+	} */
+	d_vet = global_vet_device;
+	printf("d_vet[0] %d\n",d_vet[0]);
+	printf("global_vet_device[0] %d\n",global_vet_device[0]);
+	//memcpy(d_vet,global_vet_device,global_size_vet * sizeof(long));
 }
 
 __host__ void h_print_erro(const char *func,const char *msg){
