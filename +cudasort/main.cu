@@ -26,12 +26,12 @@ void h_print_sucess(const char *func,const char *msg);
 
 
 void get_global_vet(){
-	
-	cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
+	/* if(h_global_vet_device!=NULL){
+		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
+	} */
 	if(h_global_vet_device==NULL){		
 		h_print_erro("get_global_vet","Erro ao alocar d_vet");
-	}
-	
+	}	
 	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
 	cudaDeviceSynchronize();	
 	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
@@ -47,21 +47,17 @@ void get_global_nr_part(){
 	//printf("h_global_nr_part %ld\n",h_global_nr_part);
 }
 void get_global_part(){
-	Data *d_part;
-	cudaMalloc((void**)&d_part,h_global_nr_part* sizeof(Data));
-
-	if(d_part==NULL){
-		printf("Erro ao alocar d_part\n");
+	if(h_global_part!=NULL){
+		cudaFreeHost(h_global_part);
 	}
 	cudaMallocHost((void**)&h_global_part,h_global_nr_part* sizeof(Data));
 	if(h_global_part==NULL){
 		printf("Erro ao alocar h_global_part\n");
 	}
-
-	GPU_get_d_part<<<1,1>>>(d_part);
+	GPU_get_d_part<<<1,1>>>(h_global_part);
 	cudaDeviceSynchronize();
 	//copia o vetor de particoes da placa de video para o host
-	cudaMemcpy(&h_global_part[0],&d_part[0],h_global_nr_part * sizeof(Data),cudaMemcpyDeviceToHost);	
+	//cudaMemcpy(&h_global_part[0],&d_part[0],h_global_nr_part * sizeof(Data),cudaMemcpyDeviceToHost);	
 }
 
 int main (int argc, char ** argv) {
@@ -92,7 +88,7 @@ int main (int argc, char ** argv) {
 	 
 	printf("Ordenando vetor de %ld elementos long - %f Kbytes\n",h_global_size_vet,((double)h_global_size_vet*sizeof(long))/(double)1024);	
 	h_global_vet_device =criar_vetor_desordenado(h_global_size_vet);//aloca vetor em host	
-	vet_imprimir(h_global_vet_device,h_global_size_vet); 	
+	//vet_imprimir(h_global_vet_device,h_global_size_vet); 	
 
 	long *dev_vet =NULL;
 	int erro = cudaMalloc((void**)&dev_vet,h_global_size_vet * sizeof(long));// aloca vetor na memória global da placa
@@ -104,8 +100,7 @@ int main (int argc, char ** argv) {
 	
 	//Cada CUDA core ordena uma partição de DEV_VET
 	//resulta em um único vetor de partições ordenadas
-	double s_time = wtime();	
-		
+	double s_time = wtime();			
 	
 	GPU_set_globals<<<1,1>>>(dev_vet, h_global_size_vet,nthreads);		
 	cudaDeviceSynchronize();	
@@ -122,23 +117,26 @@ int main (int argc, char ** argv) {
 	get_global_part();
 	get_global_vet();
 
-	vet_imprimir(h_global_vet_device,h_global_size_vet);
-	GPU_reset<<<1,1>>>();		
 	
-	//for(int test=0;test<2;test++){
+	
+	//Enquanto não houver apenas 1 partição faz o sort(join(vet[a1],vet[b2])) entre elas
 	while(h_global_nr_part>1 ){
-		//printf("h_global_nr_part:%ld\n",h_global_nr_part);
-		//h_global_nr_part = ceil((double)h_global_nr_part/(double)2);				
-		//Cada duas particao gera uma nova
+		
 		int count=0;
+		omp_set_num_threads(1);//Cria uma thread para cada par de particao, o escalonador que se lasque!
+		//printf("\n\n");
+		#pragma omp parallel for shared(count,h_global_part,h_global_vet_device)		
 		for(int part =0;part<h_global_nr_part;part+=2){
+			printf("dentro - nr th:%d\n",omp_get_num_threads());				
+			int idT = omp_get_thread_num();
+			//printf("Thread[%d] mesclando %d e %d\n",idT, part,part+1);
 			Data aux_1;
 			Data aux_2;
 			
 			aux_1 = h_global_part[part];
 			if(h_global_nr_part%2!=0 && part==h_global_nr_part-1){
 				h_global_part[count] =aux_1;
-				//printf("%d [%ld -- %ld][%ld] -- cpiado\n",count,aux_1.a,aux_1.b,aux_1.n);
+				//printf("%d [%ld -- %ld][%ld] -- cpiado\n",idT,aux_1.a,aux_1.b,aux_1.n);
 			}else{
 				//aux_1 = h_global_part[part];
 				aux_2 = h_global_part[part+1];	
@@ -152,12 +150,14 @@ int main (int argc, char ** argv) {
 				h_global_part[count] = result;
 			}
 			count++;
-		}					
+		}	
+		printf("fora - nr th:%d\n",omp_get_num_threads());				
 		h_global_nr_part = ceil((double)h_global_nr_part/(double)2);				
 	}
 	
 	printf("\n");
 	h_is_sort(h_global_vet_device,h_global_size_vet);
+
 	vet_imprimir(h_global_vet_device,h_global_size_vet);
 	printf("\n");
 	double e_time = wtime();	
@@ -180,7 +180,7 @@ void h_intercala (long p, long q, long r, long *v)
 {
    long *w;     
    //printf("p:%ld,r:%ld\nalocando r-p:%ld\n",p,r,r-p);                            //  1
-   w =(long *)malloc((r-p) * sizeof(long));  //  2
+   w =(long *)calloc(r-p,sizeof(long));  //  2
    if(w==NULL){
 		h_print_erro("h_intercala","Não foi possivel alocar memoria para w");
    }

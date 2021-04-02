@@ -13,7 +13,7 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-extern __device__ Data * global_part=NULL; //Array global para guardar os índices de partições préordenadas
+extern __device__ Data * _device_global_part=NULL; //Array global para guardar os índices de partições préordenadas
 extern __device__ long global_nr_part=0;   //Tamanho do array de particoes;
 extern __device__  long * global_vet_device=NULL; //Array global para guardar o vetor a ser ordenado
 extern __device__  long global_size_vet=0;
@@ -116,9 +116,9 @@ __device__ long heap_sort_array(long x){
 		n=global_size_vet-a;		
 	}
 	long b = (a +n)-1;
-	global_part[x].a =a;
-	global_part[x].b=b;
-	global_part[x].n=n;
+	_device_global_part[x].a =a;
+	_device_global_part[x].b=b;
+	_device_global_part[x].n=n;
 	
 
 	long *sub_arr =NULL;
@@ -190,9 +190,9 @@ __device__ long radix_sort_array(long x){
 		n=global_size_vet-a;		
 	}
 	long b = (a +n)-1;
-	global_part[x].a =a;
-	global_part[x].b=b;
-	global_part[x].n=n;
+	_device_global_part[x].a =a;
+	_device_global_part[x].b=b;
+	_device_global_part[x].n=n;
 	//set do vetor de particoes;	
 	//long a = x * n; // if x=0 -> a=0 ... if x=1 --> a=5...  if x=10 --> a = 50
 	long *sub_arr =NULL;
@@ -239,9 +239,9 @@ __global__ void GPU_set_globals(long *vet_d, long vet_size,long nthreads){
 	global_size_vet = vet_size;
 	global_nr_nucleos = nthreads;
 	global_nr_part = nthreads;
-	global_part = (Data *)malloc(nthreads * sizeof(Data));
-	if(global_part==NULL){
-		print_erro("GPU_set_globals","Erro ao alocar memória para 'global_part' na placa de video");
+	_device_global_part = (Data *)malloc(nthreads * sizeof(Data));
+	if(_device_global_part==NULL){
+		print_erro("GPU_set_globals","Erro ao alocar memória para '_device_global_part' na placa de video");
 	}
 
 }
@@ -251,7 +251,7 @@ __global__ void GPU_call_sort (long nthreads) {
 	
 	
 	//Inicia particionamento e ordenação
-	if((global_size_vet<2000000)){
+	if((global_size_vet<1000000)){
 		if(x==0){
 			printf("\nutilizando [radix sort]\n");
 		}
@@ -268,7 +268,7 @@ __global__ void GPU_call_sort (long nthreads) {
 }
 __global__ void GPU_reset(){
 	free(global_vet_device);
-	free(global_part);
+	free(_device_global_part);
 }
 
 __global__ void GPU_print(){
@@ -416,9 +416,9 @@ __global__ void GPU_merge (long nr_thread){
 	//    0    1     2       3         4
 	//    ______     __________      _____ 
 	//x:     0           1             2
-	long a1 = global_part[x*2].a;
-	long b1 = global_part[x*2].b;
-	long n1 = global_part[x*2].n;
+	long a1 = _device_global_part[x*2].a;
+	long b1 = _device_global_part[x*2].b;
+	long n1 = _device_global_part[x*2].n;
 	long a2,b2,n2;
 	long single_part =0;
 	
@@ -430,9 +430,9 @@ __global__ void GPU_merge (long nr_thread){
 		single_part = 1;		
 	}
 	if(!single_part){
-		a2 = global_part[(x*2)+1].a;
-		b2 = global_part[(x*2)+1].b;
-		n2 = global_part[(x*2)+1].n;
+		a2 = _device_global_part[(x*2)+1].a;
+		b2 = _device_global_part[(x*2)+1].b;
+		n2 = _device_global_part[(x*2)+1].n;
 
 		xData->a=a1;
 		xData->b=b2;
@@ -442,11 +442,11 @@ __global__ void GPU_merge (long nr_thread){
 		if(!is_sort(&global_vet_device[a1],xData->n)){
 			print_erro("GPU_merge","A sub particao não esta ordenada");
 		}
-		//global_part[x].a=a1;
-		//global_part[x].b=b2;
+		//_device_global_part[x].a=a1;
+		//_device_global_part[x].b=b2;
 	}else{
-		//global_part[x].a=a1;
-		//global_part[x].b=b1;
+		//_device_global_part[x].a=a1;
+		//_device_global_part[x].b=b1;
 		xData->a=a1;
 		xData->b=b1;
 		xData->n=(b1+1)-a1;
@@ -461,15 +461,15 @@ __global__ void GPU_merge (long nr_thread){
 	//parte do código executada apenas pela ultima thread	
 	if(x==nr_thread-1){
 		//printf("Thread:%d reorganizando vetor de particoes...\n",x);
-		free(global_part);
-		global_part = (Data *)malloc((x+1)*sizeof(Data));
-		if(global_part==NULL){
-			print_erro("GPU_merge","Erro ao alocar memoria para 'global_part'");
+		free(_device_global_part);
+		_device_global_part = (Data *)malloc((x+1)*sizeof(Data));
+		if(_device_global_part==NULL){
+			print_erro("GPU_merge","Erro ao alocar memoria para '_device_global_part'");
 		}
 		global_nr_part = x+1;
 	}
 	__syncthreads();	
-	global_part[x]=*xData;
+	_device_global_part[x]=*xData;
 		
 }
 __device__ void print_erro(const char *func,const char *msg){
@@ -498,7 +498,7 @@ __device__ int is_sort(long * arr,long n){
 }
 //#####################################################################################################
 __global__ void GPU_get_d_part(Data *d_part){
-	memcpy(d_part,global_part,global_nr_part*sizeof(Data));
+	memcpy(d_part,_device_global_part,global_nr_part*sizeof(Data));
 	
 }
 __global__ void GPU_get_nr_part(long *d_nr_part){
