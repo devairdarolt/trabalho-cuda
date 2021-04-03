@@ -1,6 +1,7 @@
 
 #include "lib.h"
 
+#include <string.h>
 #include <cuda.h>
 #include <stdio.h>
 #include <math.h>
@@ -13,10 +14,14 @@
 
 
 long h_global_nr_part;   //Tamanho do array de particoes;
-Data * h_global_part; //Array global para guardar os índices de partições préordenadas
-long * h_global_vet_device; //Array global para guardar o vetor a ser ordenado
+Data *h_global_part; //Array global para guardar os índices de partições préordenadas
+long *h_global_vet_device; //Array global para guardar o vetor a ser ordenado
 long h_global_size_vet;
 long h_global_nr_nucleos;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// --- FUNÇÕES DO HOST                                                                                                                //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void h_intercala (long p, long q, long r, long *v);
 
@@ -24,41 +29,74 @@ void h_print_erro(const char *func,const char *msg);
 
 void h_print_sucess(const char *func,const char *msg);
 
+void get_global_vet();
 
-void get_global_vet(){
-	/* if(h_global_vet_device!=NULL){
-		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
-	} */
-	if(h_global_vet_device==NULL){		
-		h_print_erro("get_global_vet","Erro ao alocar d_vet");
-	}	
-	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
-	cudaDeviceSynchronize();	
-	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
+void get_global_nr_part();
+
+void get_global_part();
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// --- FUNÇÕES DE ARQUIVO                                                                                                             //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int criar_arquivo(char *nome){
+
+	FILE *fp;
+
+	printf("Abrindo arquivo.\n");
+	if((fp = fopen(nome,"w")) == NULL){		
+		h_print_erro("criar_arquivo","Erro na abertura do arquivo");
+		return 0;
+	}
+	long val;
+	char buffer[10] = "#size";
+	fprintf(fp, "%s\n", buffer);
+	fprintf(fp, "%ld\n", h_global_size_vet);
+
+	for(int i=0; i<h_global_size_vet;i++){
+		val  = rand() % 1000;// (0 <= rand <= n)
+		fprintf(fp, "%ld\n",val);// escreve o numero separado por ','
+	}
+	printf("Arquivo gerado!\n");
+	fclose(fp);
+	return 1;
+}
+
+int read_file(char *nome){
+	FILE *fp;
+
+	printf("Abrindo arquivo.\n");
+	if((fp = fopen(nome,"r")) == NULL){		
+		h_print_erro("read_file","Erro na leitura do arquivo");
+		return 0;
+	}
 	
+	//header
+	char buffer[10];
+	fscanf(fp, "%s",buffer);
+	printf("-- [%s]\n",buffer);
+
+	//size
+	long size;
+	fscanf(fp, "%ld",&size);
+	printf("size [%s]:%ld\n",buffer,size);
+
+	long value;
+	long i = 0;
+	//long *aux = (long*)malloc(size * sizeof(long));
+	h_global_size_vet = size;
+	cudaMallocHost((void **) &h_global_vet_device, h_global_size_vet*sizeof(long));	
+	//h_global_vet_device = (long*)malloc(size * sizeof(long));
+	while ( fscanf(fp, "%ld",&value) != EOF ){		
+		h_global_vet_device[i] =(long) value;		
+		i++;
+	}
+	fclose(fp);	
+	return 1;
 }
 
-void get_global_nr_part(){
-	long *d_nr_part;
-	cudaMalloc((void**)&d_nr_part,sizeof(long));	
-	GPU_get_nr_part<<<1,1>>>(d_nr_part);
-	cudaDeviceSynchronize();
-	cudaMemcpy(&h_global_nr_part,d_nr_part,sizeof(long),cudaMemcpyDeviceToHost);
-	//printf("h_global_nr_part %ld\n",h_global_nr_part);
-}
-void get_global_part(){
-	if(h_global_part!=NULL){
-		cudaFreeHost(h_global_part);
-	}
-	cudaMallocHost((void**)&h_global_part,h_global_nr_part* sizeof(Data));
-	if(h_global_part==NULL){
-		printf("Erro ao alocar h_global_part\n");
-	}
-	GPU_get_d_part<<<1,1>>>(h_global_part);
-	cudaDeviceSynchronize();
-	//copia o vetor de particoes da placa de video para o host
-	//cudaMemcpy(&h_global_part[0],&d_part[0],h_global_nr_part * sizeof(Data),cudaMemcpyDeviceToHost);	
-}
+
+
 
 int main (int argc, char ** argv) {
 	//INICIALIZA VARIAVEIS GLOBIAS
@@ -74,21 +112,31 @@ int main (int argc, char ** argv) {
 	long nthreads = 96;
 	h_global_nr_nucleos = nthreads;
 	//long nblocos = 1;
+	char nome[] = "teste.map";
 	
 
 	
-	if (argc == 3) {
+	if (argc == 3 ||argc == 4) {
 		nthreads = atoi(argv[1]);
-		h_global_size_vet = atoi(argv[2]);
+		strcpy(nome,argv[2]);
+		if(argc == 4){
+			h_global_size_vet = atoi(argv[3]);	
+			criar_arquivo(nome);
+		}
+		//nome = argv[2];
+		//h_global_size_vet = atoi(argv[2]);
 	}else{
-		printf ("./main <nthreads> <h_global_size_vet>\n");
-		printf ("Caso não haja passagem de parâmetros, nthreads=%ld e h_global_size_vet=%ld\n",nthreads,h_global_size_vet);
+		printf ("./main <nthreads> <fileName> --- faz a leitura do arquivo de entrada\n");
+		printf ("./main <nthreads> <fileName> <size>--- cria um arquivo de leitura com tamanho size.\n");
+		return 0;
 	} 
+	
+	read_file(nome);
 
-	 
+
 	printf("Ordenando vetor de %ld elementos long - %f Kbytes\n",h_global_size_vet,((double)h_global_size_vet*sizeof(long))/(double)1024);	
-	h_global_vet_device =criar_vetor_desordenado(h_global_size_vet);//aloca vetor em host	
-	//vet_imprimir(h_global_vet_device,h_global_size_vet); 	
+	//h_global_vet_device =criar_vetor_desordenado(h_global_size_vet);//aloca vetor em host	
+	vet_imprimir(h_global_vet_device,h_global_size_vet); 	
 
 	long *dev_vet =NULL;
 	int erro = cudaMalloc((void**)&dev_vet,h_global_size_vet * sizeof(long));// aloca vetor na memória global da placa
@@ -119,15 +167,13 @@ int main (int argc, char ** argv) {
 
 	
 	
-	//Enquanto não houver apenas 1 partição faz o sort(join(vet[a1],vet[b2])) entre elas
-	while(h_global_nr_part>1 ){
-		
+	
+	while(h_global_nr_part>1 ){		
 		int count=0;
 		omp_set_num_threads(1);//Cria uma thread para cada par de particao, o escalonador que se lasque!
 		//printf("\n\n");
 		#pragma omp parallel for shared(count,h_global_part,h_global_vet_device)		
-		for(int part =0;part<h_global_nr_part;part+=2){
-			printf("dentro - nr th:%d\n",omp_get_num_threads());				
+		for(int part =0;part<h_global_nr_part;part+=2){			
 			int idT = omp_get_thread_num();
 			//printf("Thread[%d] mesclando %d e %d\n",idT, part,part+1);
 			Data aux_1;
@@ -150,8 +196,7 @@ int main (int argc, char ** argv) {
 				h_global_part[count] = result;
 			}
 			count++;
-		}	
-		printf("fora - nr th:%d\n",omp_get_num_threads());				
+		}						
 		h_global_nr_part = ceil((double)h_global_nr_part/(double)2);				
 	}
 	
@@ -165,12 +210,12 @@ int main (int argc, char ** argv) {
 	//cudaFree(dev_vet);
 	if(h_global_part!=NULL){
 		printf("free h_global_part\n");
-		cudaFreeHost(h_global_part);
+		//cudaFreeHost(h_global_part);
 		//free(h_global_part);
 	}
 	if(h_global_vet_device!=NULL){
 		printf("free h_global_vet_device\n");
-		cudaFreeHost(h_global_vet_device);
+		//cudaFreeHost(h_global_vet_device);
 		//free(h_global_vet_device);
 	}
 
@@ -199,4 +244,42 @@ void h_intercala (long p, long q, long r, long *v)
    free (w);                               // 12
 }
 
+void get_global_vet(){
+	/* if(h_global_vet_device!=NULL){
+		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
+	} */
+	if(h_global_vet_device==NULL){		
+		h_print_erro("get_global_vet","Erro ao alocar d_vet");
+	}	
+	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
+	cudaDeviceSynchronize();	
+	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
+	
+}
 
+void get_global_nr_part(){
+	long *d_nr_part;
+	cudaMalloc((void**)&d_nr_part,sizeof(long));	
+	GPU_get_nr_part<<<1,1>>>(d_nr_part);
+	cudaDeviceSynchronize();
+	cudaMemcpy(&h_global_nr_part,d_nr_part,sizeof(long),cudaMemcpyDeviceToHost);
+	//printf("h_global_nr_part %ld\n",h_global_nr_part);
+}
+
+void get_global_part(){
+	if(h_global_part!=NULL){
+		cudaFreeHost(h_global_part);
+	}
+	cudaMallocHost((void**)&h_global_part,h_global_nr_part* sizeof(Data));
+	if(h_global_part==NULL){
+		printf("Erro ao alocar h_global_part\n");
+	}
+	GPU_get_d_part<<<1,1>>>(h_global_part);
+	cudaDeviceSynchronize();
+	//copia o vetor de particoes da placa de video para o host
+	//cudaMemcpy(&h_global_part[0],&d_part[0],h_global_nr_part * sizeof(Data),cudaMemcpyDeviceToHost);	
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// --- FUNÇÕES DE ARQUIVOS                                                                                                            //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

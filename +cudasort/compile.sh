@@ -13,5 +13,5 @@ nvcc  --device-c *.cu -Xcompiler -fopenmp  #gera os arquivos .o
 nvcc  *.o -lgomp	                    #gera o executavel
 
 mv 'a.out' main
-rm -f *.o  *.map *.result *.log
+rm -f *.o  *.result *.log
 
