@@ -23,77 +23,26 @@ long h_global_nr_nucleos;
 // --- FUNÇÕES DO HOST                                                                                                                //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void h_intercala (long p, long q, long r, long *v);
+__host__ void h_intercala (long p, long q, long r, long *v);
 
-void h_print_erro(const char *func,const char *msg);
+__host__ void h_print_erro(const char *func,const char *msg);
 
-void h_print_sucess(const char *func,const char *msg);
+__host__ void h_print_sucess(const char *func,const char *msg);
 
-void get_global_vet();
+__host__ void host_get_global_vet();
 
-void get_global_nr_part();
+__host__ void get_global_nr_part();
 
-void get_global_part();
+__host__ void get_global_part();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DE ARQUIVO                                                                                                             //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int criar_arquivo(char *nome){
+__host__ int criar_arquivo(char *nome);
 
-	FILE *fp;
+__host__ int read_file(char *nome);
 
-	printf("Abrindo arquivo.\n");
-	if((fp = fopen(nome,"w")) == NULL){		
-		h_print_erro("criar_arquivo","Erro na abertura do arquivo");
-		return 0;
-	}
-	long val;
-	char buffer[10] = "#size";
-	fprintf(fp, "%s\n", buffer);
-	fprintf(fp, "%ld\n", h_global_size_vet);
-
-	for(int i=0; i<h_global_size_vet;i++){
-		val  = rand() % 1000;// (0 <= rand <= n)
-		fprintf(fp, "%ld\n",val);// escreve o numero separado por ','
-	}
-	printf("Arquivo gerado!\n");
-	fclose(fp);
-	return 1;
-}
-
-int read_file(char *nome){
-	FILE *fp;
-
-	printf("Abrindo arquivo.\n");
-	if((fp = fopen(nome,"r")) == NULL){		
-		h_print_erro("read_file","Erro na leitura do arquivo");
-		return 0;
-	}
-	
-	//header
-	char buffer[10];
-	fscanf(fp, "%s",buffer);
-	printf("-- [%s]\n",buffer);
-
-	//size
-	long size;
-	fscanf(fp, "%ld",&size);
-	printf("size [%s]:%ld\n",buffer,size);
-
-	long value;
-	long i = 0;
-	//long *aux = (long*)malloc(size * sizeof(long));
-	h_global_size_vet = size;
-	cudaMallocHost((void **) &h_global_vet_device, h_global_size_vet*sizeof(long));	
-	//h_global_vet_device = (long*)malloc(size * sizeof(long));
-	while ( fscanf(fp, "%ld",&value) != EOF ){		
-		h_global_vet_device[i] =(long) value;		
-		i++;
-	}
-	fclose(fp);	
-	return 1;
-}
 
 
 
@@ -163,7 +112,7 @@ int main (int argc, char ** argv) {
 	//Copia as variaveis globais da placa para a memoria do host	
 	get_global_nr_part();
 	get_global_part();
-	get_global_vet();
+	host_get_global_vet();
 
 	
 	
@@ -221,7 +170,7 @@ int main (int argc, char ** argv) {
 
 	return 0;
 }
-void h_intercala (long p, long q, long r, long *v) 
+__host__ void h_intercala (long p, long q, long r, long *v) 
 {
    long *w;     
    //printf("p:%ld,r:%ld\nalocando r-p:%ld\n",p,r,r-p);                            //  1
@@ -244,12 +193,12 @@ void h_intercala (long p, long q, long r, long *v)
    free (w);                               // 12
 }
 
-void get_global_vet(){
+__host__ void host_get_global_vet(){
 	/* if(h_global_vet_device!=NULL){
 		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
 	} */
 	if(h_global_vet_device==NULL){		
-		h_print_erro("get_global_vet","Erro ao alocar d_vet");
+		h_print_erro("host_get_global_vet","Erro ao alocar d_vet");
 	}	
 	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
 	cudaDeviceSynchronize();	
@@ -257,7 +206,7 @@ void get_global_vet(){
 	
 }
 
-void get_global_nr_part(){
+__host__ void get_global_nr_part(){
 	long *d_nr_part;
 	cudaMalloc((void**)&d_nr_part,sizeof(long));	
 	GPU_get_nr_part<<<1,1>>>(d_nr_part);
@@ -266,7 +215,7 @@ void get_global_nr_part(){
 	//printf("h_global_nr_part %ld\n",h_global_nr_part);
 }
 
-void get_global_part(){
+__host__ void get_global_part(){
 	if(h_global_part!=NULL){
 		cudaFreeHost(h_global_part);
 	}
@@ -283,3 +232,60 @@ void get_global_part(){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DE ARQUIVOS                                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+__host__ int criar_arquivo(char *nome){
+
+	FILE *fp;
+
+	printf("Abrindo arquivo.\n");
+	if((fp = fopen(nome,"w")) == NULL){		
+		h_print_erro("criar_arquivo","Erro na abertura do arquivo");
+		return 0;
+	}
+	long val;
+	char buffer[10] = "#size";
+	fprintf(fp, "%s\n", buffer);
+	fprintf(fp, "%ld\n", h_global_size_vet);
+
+	for(int i=0; i<h_global_size_vet;i++){
+		val  = rand() % 1000;// (0 <= rand <= n)
+		fprintf(fp, "%ld\n",val);// escreve o numero separado por ','
+	}
+	printf("Arquivo gerado!\n");
+	fclose(fp);
+	return 1;
+}
+
+__host__ int read_file(char *nome){
+	FILE *fp;
+
+	printf("Abrindo arquivo.\n");
+	if((fp = fopen(nome,"r")) == NULL){		
+		h_print_erro("read_file","Erro na leitura do arquivo");
+		return 0;
+	}
+	
+	//header
+	char buffer[10];
+	fscanf(fp, "%s",buffer);
+	printf("-- [%s]\n",buffer);
+
+	//size
+	long size;
+	fscanf(fp, "%ld",&size);
+	printf("size [%s]:%ld\n",buffer,size);
+
+	long value;
+	long i = 0;
+	//long *aux = (long*)malloc(size * sizeof(long));
+	h_global_size_vet = size;
+	cudaMallocHost((void **) &h_global_vet_device, h_global_size_vet*sizeof(long));	
+	//h_global_vet_device = (long*)malloc(size * sizeof(long));
+	while ( fscanf(fp, "%ld",&value) != EOF ){		
+		h_global_vet_device[i] =(long) value;		
+		i++;
+	}
+	fclose(fp);	
+	return 1;
+}
+
