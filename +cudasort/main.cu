@@ -29,19 +29,19 @@ __host__ void h_print_erro(const char *func,const char *msg);
 
 __host__ void h_print_sucess(const char *func,const char *msg);
 
-__host__ void host_get_global_vet();
+__host__ void host_get_global_array();
 
-__host__ void get_global_nr_part();
+__host__ void host_get_global_nr_partitions();
 
-__host__ void get_global_part();
+__host__ void host_get_global_partitions();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DE ARQUIVO                                                                                                             //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__host__ int criar_arquivo(char *nome);
+__host__ int host_make_input_file(char *nome);
 
-__host__ int read_file(char *nome);
+__host__ int host_load_input_file(char *nome);
 
 
 
@@ -70,7 +70,7 @@ int main (int argc, char ** argv) {
 		strcpy(nome,argv[2]);
 		if(argc == 4){
 			h_global_size_vet = atoi(argv[3]);	
-			criar_arquivo(nome);
+			host_make_input_file(nome);
 		}
 		//nome = argv[2];
 		//h_global_size_vet = atoi(argv[2]);
@@ -80,7 +80,7 @@ int main (int argc, char ** argv) {
 		return 0;
 	} 
 	
-	read_file(nome);
+	host_load_input_file(nome);
 
 
 	printf("Ordenando vetor de %ld elementos long - %f Kbytes\n",h_global_size_vet,((double)h_global_size_vet*sizeof(long))/(double)1024);	
@@ -110,9 +110,9 @@ int main (int argc, char ** argv) {
 	
 	
 	//Copia as variaveis globais da placa para a memoria do host	
-	get_global_nr_part();
-	get_global_part();
-	host_get_global_vet();
+	host_get_global_nr_partitions();
+	host_get_global_partitions();
+	host_get_global_array();
 
 	
 	
@@ -193,12 +193,12 @@ __host__ void h_intercala (long p, long q, long r, long *v)
    free (w);                               // 12
 }
 
-__host__ void host_get_global_vet(){
+__host__ void host_get_global_array(){
 	/* if(h_global_vet_device!=NULL){
 		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
 	} */
 	if(h_global_vet_device==NULL){		
-		h_print_erro("host_get_global_vet","Erro ao alocar d_vet");
+		h_print_erro("host_get_global_array","Erro ao alocar d_vet");
 	}	
 	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
 	cudaDeviceSynchronize();	
@@ -206,7 +206,7 @@ __host__ void host_get_global_vet(){
 	
 }
 
-__host__ void get_global_nr_part(){
+__host__ void host_get_global_nr_partitions(){
 	long *d_nr_part;
 	cudaMalloc((void**)&d_nr_part,sizeof(long));	
 	GPU_get_nr_part<<<1,1>>>(d_nr_part);
@@ -215,7 +215,7 @@ __host__ void get_global_nr_part(){
 	//printf("h_global_nr_part %ld\n",h_global_nr_part);
 }
 
-__host__ void get_global_part(){
+__host__ void host_get_global_partitions(){
 	if(h_global_part!=NULL){
 		cudaFreeHost(h_global_part);
 	}
@@ -233,13 +233,13 @@ __host__ void get_global_part(){
 // --- FUNÇÕES DE ARQUIVOS                                                                                                            //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__host__ int criar_arquivo(char *nome){
+__host__ int host_make_input_file(char *nome){
 
 	FILE *fp;
 
 	printf("Abrindo arquivo.\n");
 	if((fp = fopen(nome,"w")) == NULL){		
-		h_print_erro("criar_arquivo","Erro na abertura do arquivo");
+		h_print_erro("host_make_input_file","Erro na abertura do arquivo");
 		return 0;
 	}
 	long val;
@@ -256,12 +256,12 @@ __host__ int criar_arquivo(char *nome){
 	return 1;
 }
 
-__host__ int read_file(char *nome){
+__host__ int host_load_input_file(char *nome){
 	FILE *fp;
 
 	printf("Abrindo arquivo.\n");
 	if((fp = fopen(nome,"r")) == NULL){		
-		h_print_erro("read_file","Erro na leitura do arquivo");
+		h_print_erro("host_load_input_file","Erro na leitura do arquivo");
 		return 0;
 	}
 	
