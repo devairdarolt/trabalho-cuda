@@ -23,11 +23,11 @@ long h_global_nr_nucleos;
 // --- FUNÇÕES DO HOST                                                                                                                //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-__host__ void h_intercala (long p, long q, long r, long *v);
+__host__ void host_intercala (long p, long q, long r, long *v);
 
-__host__ void h_print_erro(const char *func,const char *msg);
+__host__ void host_print_erro(const char *func,const char *msg);
 
-__host__ void h_print_sucess(const char *func,const char *msg);
+__host__ void host_print_sucess(const char *func,const char *msg);
 
 __host__ void host_get_global_array();
 
@@ -99,13 +99,13 @@ int main (int argc, char ** argv) {
 	//resulta em um único vetor de partições ordenadas
 	double s_time = wtime();			
 	
-	GPU_set_globals<<<1,1>>>(dev_vet, h_global_size_vet,nthreads);		
+	KERNEL_set_globals<<<1,1>>>(dev_vet, h_global_size_vet,nthreads);		
 	cudaDeviceSynchronize();	
 	
-	GPU_call_sort<<<1,nthreads>>>(nthreads);	
+	KERNEL_call_sort<<<1,nthreads>>>(nthreads);	
 	cudaDeviceSynchronize();	
 	double g_time = wtime();	
-	h_print_sucess("GPU_call_sort","GPU sort finalizado");
+	host_print_sucess("KERNEL_call_sort","GPU sort finalizado");
 	printf("Tempo levado para ordenar as sub particoes na GPU[%f]\n",g_time-s_time);
 	
 	
@@ -137,7 +137,7 @@ int main (int argc, char ** argv) {
 				aux_2 = h_global_part[part+1];	
 							
 				//printf("%d [%ld -- %ld][%ld - %ld][%ld] -- intercalado [%ld -- %ld]\n",count,aux_1.a,aux_1.b,aux_2.a,aux_2.b,aux_1.n+aux_2.n,aux_1.a,aux_2.b);
-				h_intercala(aux_1.a,aux_2.a,aux_2.b+1,&h_global_vet_device[0]);
+				host_intercala(aux_1.a,aux_2.a,aux_2.b+1,&h_global_vet_device[0]);
 				Data result;
 				result.a=aux_1.a;
 				result.b=aux_2.b;
@@ -170,13 +170,13 @@ int main (int argc, char ** argv) {
 
 	return 0;
 }
-__host__ void h_intercala (long p, long q, long r, long *v) 
+__host__ void host_intercala (long p, long q, long r, long *v) 
 {
    long *w;     
    //printf("p:%ld,r:%ld\nalocando r-p:%ld\n",p,r,r-p);                            //  1
    w =(long *)calloc(r-p,sizeof(long));  //  2
    if(w==NULL){
-		h_print_erro("h_intercala","Não foi possivel alocar memoria para w");
+		host_print_erro("host_intercala","Não foi possivel alocar memoria para w");
    }
    long i = p, j = q;                       //  3
    long k = 0;                              //  4
@@ -198,9 +198,9 @@ __host__ void host_get_global_array(){
 		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
 	} */
 	if(h_global_vet_device==NULL){		
-		h_print_erro("host_get_global_array","Erro ao alocar d_vet");
+		host_print_erro("host_get_global_array","Erro ao alocar d_vet");
 	}	
-	GPU_get_global_vet<<<1,1>>>(h_global_vet_device);	
+	KERNEL_get_global_array<<<1,1>>>(h_global_vet_device);	
 	cudaDeviceSynchronize();	
 	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
 	
@@ -209,7 +209,7 @@ __host__ void host_get_global_array(){
 __host__ void host_get_global_nr_partitions(){
 	long *d_nr_part;
 	cudaMalloc((void**)&d_nr_part,sizeof(long));	
-	GPU_get_nr_part<<<1,1>>>(d_nr_part);
+	KERNEL_get_nr_partitions<<<1,1>>>(d_nr_part);
 	cudaDeviceSynchronize();
 	cudaMemcpy(&h_global_nr_part,d_nr_part,sizeof(long),cudaMemcpyDeviceToHost);
 	//printf("h_global_nr_part %ld\n",h_global_nr_part);
@@ -223,7 +223,7 @@ __host__ void host_get_global_partitions(){
 	if(h_global_part==NULL){
 		printf("Erro ao alocar h_global_part\n");
 	}
-	GPU_get_d_part<<<1,1>>>(h_global_part);
+	KERNEL_get_array_partitions<<<1,1>>>(h_global_part);
 	cudaDeviceSynchronize();
 	//copia o vetor de particoes da placa de video para o host
 	//cudaMemcpy(&h_global_part[0],&d_part[0],h_global_nr_part * sizeof(Data),cudaMemcpyDeviceToHost);	
@@ -239,7 +239,7 @@ __host__ int host_make_input_file(char *nome){
 
 	printf("Abrindo arquivo.\n");
 	if((fp = fopen(nome,"w")) == NULL){		
-		h_print_erro("host_make_input_file","Erro na abertura do arquivo");
+		host_print_erro("host_make_input_file","Erro na abertura do arquivo");
 		return 0;
 	}
 	long val;
@@ -261,7 +261,7 @@ __host__ int host_load_input_file(char *nome){
 
 	printf("Abrindo arquivo.\n");
 	if((fp = fopen(nome,"r")) == NULL){		
-		h_print_erro("host_load_input_file","Erro na leitura do arquivo");
+		host_print_erro("host_load_input_file","Erro na leitura do arquivo");
 		return 0;
 	}
 	
