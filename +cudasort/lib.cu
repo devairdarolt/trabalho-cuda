@@ -81,29 +81,38 @@ __device__ void device_bubble_sort_array(long index)
 } 
 
 __device__ void device_bubble_sort(long tId) {
-	for(int k=0; k<(device_ceild((double)_device_global_array_size/2));k++){
+
+
+	for(int k=0; k<(_device_global_array_size);k++){
 		
 		long x=tId,y=0;
 		int shift = 0;																						//   sz    t p        p:par, t:threads sz=size_vet
-		long posicao;
-		int iteracoes = device_ceild((double)_device_global_array_size/(_device_global_nr_thread*2)); ///  23 / (3*2) = 10/4 = 3
-		for(int i=0; i< iteracoes;i++){
+		long posicao=0;
+		//int iteracoes = device_ceild((double)_device_global_array_size/(_device_global_nr_thread*2)); ///  23 / (3*2) = 10/4 = 3
+		//for(int i=0; i< iteracoes;i++){
+		do{
 			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads
 			//printf("x[%ld] posicao[%ld]\n",x,posicao);
 			device_bubble_sort_array(posicao);		
 			y+=_device_global_nr_thread;
-		}
+			__syncthreads();
+		}while(posicao<_device_global_array_size);
+
+
 		__syncthreads();
 		shift = 1; // desloca para pegar de forma ímpar
 		y=0;
-		//printf("shift\n");
-		for(int i=0, y=0; i< iteracoes;i++){
+				
+		do{
+		//for(int i=0, y=0; i< iteracoes;i++){
 			posicao = (2 * tId) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads +shift
 			//printf("x[%ld] posicao[%ld]\n",x,posicao);
 			device_bubble_sort_array(posicao);		
 			y+=_device_global_nr_thread;
-		} 
+			__syncthreads();
+		}while(posicao<_device_global_array_size); 
 		
+		__syncthreads();
 	}
 	
 	
@@ -304,10 +313,29 @@ __global__ void KERNEL_set_globals(long *vet_d, long vet_size,long nthreads){
 
 }
 
-__global__ void KERNEL_call_sort (long nthreads) {
+__global__ void KERNEL_call_sort (long nthreads,int opc) {
 	long tId = threadIdx.x;
 	
-	device_bubble_sort(tId);
+	switch(opc){
+
+		case CUDA_BUBBLE:
+			if(tId==0){
+				printf("\nUtilizando[bubble sort]\n");
+			}
+			device_bubble_sort(tId);
+			break;
+
+		case CUDA_HEAP:
+			if(tId==0){
+				printf("\nUtilizando[heap sort]\n");
+			}
+			device_heap_sort_array(tId);
+			break;
+
+
+	}
+	
+
 	
 	
 	
@@ -354,8 +382,8 @@ __global__ void KERNEL_print_array(){
 	}
 	
 	int max_index = _device_global_array_size;
-	if(max_index>20){
-		max_index = 20;
+	if(max_index>10){
+		max_index = 10;
 	}
 	printf("\n%d primeiros:",max_index);
 	for(int i=0;i<max_index;i++){
@@ -372,37 +400,17 @@ __global__ void KERNEL_print_array(){
 		device_print_erro("KERNEL_print_array","os dados não foram copiados para a memória da placa...");
 	}
 	printf("\n");
-	
+	/* 
 	if(device_check_sorted(&_device_global_array[0],_device_global_array_size)){		
 		device_print_sucess("KERNEL_print_array","VETOR ORDENADO!");
 	}else{
 		device_print_erro("KERNEL_print_array","VETOR DESORDENADO!");		
 	}	
-	printf("\n");
+	printf("\n"); */
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DE AUXILIARES                                                                                                          //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-__host__ long *criar_vetor_desordenado(long vet_size){	
-	if(vet_size < 0){
-		printf("O tamanho do vetor tem que ser maior que 0\n");
-	}
-	printf("Alocando na memória do host\n");
-	long *vet;
-	cudaMallocHost((void **) &vet, vet_size*sizeof(long));	
-	if(vet==NULL){
-		host_print_erro("criar_vetor_desordenado","Erro ao alocar memória 'cudaMallocHost'");
-	}
-	printf("memória alocada\n");
-	//inicia valores do vetor desordenado
-	srand(time(0));
-	for(long i=0;i<vet_size;i++){
-		vet[i]= rand() % 100000;// (0 <= rand <= vet_size)
-	}
-	printf("Vetor aleatório gerado alocado\n");
-	return vet;
-}
 
 __host__ void vet_imprimir(long *v,long vet_size){
 	if(v==NULL){
@@ -415,31 +423,31 @@ __host__ void vet_imprimir(long *v,long vet_size){
 	}
 	//printf("primeiro elemento:%d\n",v[0]);
 	//printf("ultimo elemento:%d\n",v[vet_size-1]);	
-	printf("vet_d: ");
+	
 	long max_index = vet_size;
-	if(max_index>50){
-		max_index = 50;
+	if(max_index>10){
+		max_index = 10;
 	}
 	
-	printf("\n%ld primeiros\t",max_index);
+	printf("\n%ld primeiros:   ",max_index);
 	for(long i=0;i<max_index;i++){
 		printf(" %ld, ",v[i]);
 	}
 	if(vet_size>50){
-		printf("\n%ld Ultimas\t",max_index);
-		for(long i=vet_size-50;i<vet_size;i++){
+		printf("\n%ld Ultimos:  ",max_index);
+		for(long i=vet_size-max_index;i<vet_size;i++){
 			printf(" %ld, ",v[i]);
 		}		
 	}		
 	printf("\n");
-
+	/* 
 	int ordenado = h_is_sort(v,vet_size);	
 	if(ordenado){
 		host_print_sucess("vet_imprimir","ORDENADO!");
 		
 	}else{
 		host_print_erro("vet_imprimir","DESORDENADO!");		
-	}	
+	} */	
 
 
 }
@@ -585,14 +593,9 @@ __global__ void KERNEL_get_nr_partitions(long *d_nr_part){
 }
 
 __global__ void KERNEL_get_global_array(long *d_vet){
-	//d_vet = _device_global_array;
-	/* for(int i=0;i<_device_global_array_size;i++){
-		d_vet[i] =_device_global_array[i];
-	} */
-	//d_vet = _device_global_array;
+	
 	memcpy(d_vet,_device_global_array,_device_global_array_size*sizeof(long));
-	printf("d_vet[0] %d\n",d_vet[0]);	
-	//memcpy(d_vet,_device_global_array,_device_global_array_size * sizeof(long));
+	
 }
 
 __host__ void host_print_erro(const char *func,const char *msg){

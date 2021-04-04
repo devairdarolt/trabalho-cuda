@@ -4,7 +4,12 @@ typedef struct Data{
 	long n;
 }Data;
 
-
+#define SEQUENCIAL 1
+#define CUDA_BUBBLE 2
+#define CUDA_HEAP 3
+#define CUDA_HEAP_MERGE 4
+#define CUDA_RADIX 5 
+#define OMP_BUBBLE 6
 
 
 
@@ -18,7 +23,7 @@ extern __global__ void KERNEL_reset();
 
 extern __global__ void KERNEL_print_array();
 
-extern __global__ void KERNEL_call_sort (long nthreads); 
+extern __global__ void KERNEL_call_sort (long nthreads,int opc); 
 
 extern __global__ void KERNEL_merge (long nr_thread); 
 
@@ -29,9 +34,10 @@ extern __global__ void KERNEL_get_array_partitions(Data *d_part);
 
 extern __global__ void KERNEL_get_global_array(long *d_vet);
 
+
+
 extern __host__ double wtime();
 
-extern __host__ long *criar_vetor_desordenado(long vet_size);
 
 extern __host__ void vet_imprimir(long *v,long vet_size);
 
