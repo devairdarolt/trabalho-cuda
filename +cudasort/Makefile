@@ -1,25 +1,33 @@
 # GNU Makefile
 
+
+# GNU Makefile
+
 export PATH=/usr/bin/:$PATH
 #set dir para nvcc cuda 7
 CC = nvcc
-TARGET = compile rename clean
-
+#CC = gcc
+CCFLAGS = #-Wall
+LDFLAGS =
+TARGET = main #02_hello 03_vetSoma 04_vetSoma2 05_proc 06_mem 07_kernel 08_matSoma 09_matMult
+EXE = main
 
 all: $(TARGET)
 
-compile:
-	$(CC)  --device-c *.cu
-	$(CC)  *.o	
-	echo "Renomeando arquivos...\n"
+%.o: %.cu
+	$(CC) $(CCFLAGS) -c $< -lm
 
-rename:
-	mv 'a.out' main
+%: %.o
+	$(CC) $(LDFLAGS) $^ -o $@
+
+
+
 help:
 	@echo
 	@echo
 	@echo "####### Exemplo de Execução GPU #######"
-	@echo "./matMult"
+	@echo "./01_device"
 
 clean:
-	rm -f *.o  *.map *.result
+	rm -f *.o *~ $(TARGET) *.map *.result
+
