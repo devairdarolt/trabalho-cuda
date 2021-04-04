@@ -15,10 +15,11 @@
 
 long h_global_nr_part;   //Tamanho do array de particoes;
 Data *h_global_part; //Array global para guardar os índices de partições préordenadas
-long *h_global_vet_device; //Array global para guardar o vetor a ser ordenado
-long h_global_size_vet;
-long h_global_nr_nucleos;
+long *h_global_array; //Array global para guardar o vetor a ser ordenado
+long  h_global_array_size;
+long h_global_nr_threads;
 
+long *d_global_array; //Array para ser alocado em device
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DO HOST                                                                                                                //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -51,77 +52,84 @@ int main (int argc, char ** argv) {
 	//INICIALIZA VARIAVEIS GLOBIAS
 	h_global_nr_part=0;   //Tamanho do array de particoes;
 	h_global_part=NULL; //Array global para guardar os índices de partições préordenadas
-	h_global_vet_device=NULL; //Array global para guardar o vetor a ser ordenado
+	h_global_array=NULL; //Array global para guardar o vetor a ser ordenado
 	
-	h_global_size_vet=100000;	
-	h_global_nr_nucleos=0;
+	d_global_array=NULL;
 	
-
-
-	long nthreads = 96;
-	h_global_nr_nucleos = nthreads;
+	h_global_array_size=100000;		
+	h_global_nr_threads = 512;
 	//long nblocos = 1;
-	char nome[] = "teste.map";
+	char nome[] = "caos.map";
 	
 
 	
 	if (argc == 3 ||argc == 4) {
-		nthreads = atoi(argv[1]);
+		h_global_nr_threads = atoi(argv[1]);
 		strcpy(nome,argv[2]);
 		if(argc == 4){
-			h_global_size_vet = atoi(argv[3]);	
+			h_global_array_size = atoi(argv[3]);	
 			host_make_input_file(nome);
 		}
 		//nome = argv[2];
-		//h_global_size_vet = atoi(argv[2]);
+		//h_global_array_size = atoi(argv[2]);
 	}else{
-		printf ("./main <nthreads> <fileName> --- faz a leitura do arquivo de entrada\n");
-		printf ("./main <nthreads> <fileName> <size>--- cria um arquivo de leitura com tamanho size.\n");
+		printf ("./main <h_global_nr_threads> <fileName> --- faz a leitura do arquivo de entrada\n");
+		printf ("./main <h_global_nr_threads> <fileName> <size>--- cria um arquivo de leitura com tamanho size.\n");
 		return 0;
 	} 
 	
+	if(!((double)h_global_array_size/h_global_nr_threads >= 2)){
+		host_print_erro("A quantidade de números precisa ser duas vezes maior que a quantidade de threads","");
+		return 0;
+	}
+
 	host_load_input_file(nome);
+	printf("Ordenando vetor de %ld elementos long - %f Kbytes\n",h_global_array_size,((double)h_global_array_size*sizeof(long))/(double)1024);	
+	vet_imprimir(h_global_array,h_global_array_size); 	
 
+	
+	/********************************************************************************
+	*	CUDA 																		*
+	*********************************************************************************/
 
-	printf("Ordenando vetor de %ld elementos long - %f Kbytes\n",h_global_size_vet,((double)h_global_size_vet*sizeof(long))/(double)1024);	
-	//h_global_vet_device =criar_vetor_desordenado(h_global_size_vet);//aloca vetor em host	
-	vet_imprimir(h_global_vet_device,h_global_size_vet); 	
-
-	long *dev_vet =NULL;
-	int erro = cudaMalloc((void**)&dev_vet,h_global_size_vet * sizeof(long));// aloca vetor na memória global da placa
+	
+	int erro = cudaMalloc((void**)&d_global_array,h_global_array_size * sizeof(long));// aloca vetor na memória global da placa
 	if(erro){
 		printf("\033[0;31m Erro ao alocar memória da placa de video...\n \e[m");
 	}
-	printf("Dados copiados para a placa de video %3f MB\n",(double)(h_global_size_vet*sizeof(long))/1024/1024);
-	cudaMemcpy (dev_vet, h_global_vet_device, h_global_size_vet*sizeof(long), cudaMemcpyHostToDevice);
+	printf("Dados copiados para a placa de video %3f MB\n",(double)(h_global_array_size*sizeof(long))/1024/1024);
+	cudaMemcpy (d_global_array, h_global_array, h_global_array_size*sizeof(long), cudaMemcpyHostToDevice);
 	
-	//Cada CUDA core ordena uma partição de DEV_VET
+	//Cada CUDA core ordena uma partição de d_global_array
 	//resulta em um único vetor de partições ordenadas
 	double s_time = wtime();			
 	
-	KERNEL_set_globals<<<1,1>>>(dev_vet, h_global_size_vet,nthreads);		
+	KERNEL_set_globals<<<1,1>>>(d_global_array, h_global_array_size,h_global_nr_threads);		
 	cudaDeviceSynchronize();	
 	
-	KERNEL_call_sort<<<1,nthreads>>>(nthreads);	
+
+	
+	KERNEL_call_sort<<<1,h_global_nr_threads>>>(h_global_nr_threads);	
+	cudaDeviceSynchronize();	
+	KERNEL_print_array<<<1,1>>>();
+	cudaDeviceSynchronize();
+	double g_time = wtime();	
+	/* 	
+
+	KERNEL_call_sort<<<1,h_global_nr_threads>>>(h_global_nr_threads);	
 	cudaDeviceSynchronize();	
 	double g_time = wtime();	
-	host_print_sucess("KERNEL_call_sort","GPU sort finalizado");
-	printf("Tempo levado para ordenar as sub particoes na GPU[%f]\n",g_time-s_time);
+
+	//host_print_sucess("KERNEL_call_sort","GPU sort finalizado");
+	//printf("Tempo levado para ordenar as sub particoes na GPU[%f]\n",g_time-s_time);
 	
 	
 	//Copia as variaveis globais da placa para a memoria do host	
 	host_get_global_nr_partitions();
 	host_get_global_partitions();
-	host_get_global_array();
-
-	
-	
-	
+	host_get_global_array();	
 	while(h_global_nr_part>1 ){		
-		int count=0;
-		omp_set_num_threads(1);//Cria uma thread para cada par de particao, o escalonador que se lasque!
-		//printf("\n\n");
-		#pragma omp parallel for shared(count,h_global_part,h_global_vet_device)		
+		int count=0;				
 		for(int part =0;part<h_global_nr_part;part+=2){			
 			int idT = omp_get_thread_num();
 			//printf("Thread[%d] mesclando %d e %d\n",idT, part,part+1);
@@ -137,7 +145,7 @@ int main (int argc, char ** argv) {
 				aux_2 = h_global_part[part+1];	
 							
 				//printf("%d [%ld -- %ld][%ld - %ld][%ld] -- intercalado [%ld -- %ld]\n",count,aux_1.a,aux_1.b,aux_2.a,aux_2.b,aux_1.n+aux_2.n,aux_1.a,aux_2.b);
-				host_intercala(aux_1.a,aux_2.a,aux_2.b+1,&h_global_vet_device[0]);
+				host_intercala(aux_1.a,aux_2.a,aux_2.b+1,&h_global_array[0]);
 				Data result;
 				result.a=aux_1.a;
 				result.b=aux_2.b;
@@ -150,23 +158,41 @@ int main (int argc, char ** argv) {
 	}
 	
 	printf("\n");
-	h_is_sort(h_global_vet_device,h_global_size_vet);
-
-	vet_imprimir(h_global_vet_device,h_global_size_vet);
-	printf("\n");
+	h_is_sort(h_global_array,h_global_array_size);
+ */
+	//vet_imprimir(h_global_array,h_global_array_size);
+	//printf("\n");
+	printf("Tempo levado para ordenar as sub particoes na GPU[%f]\n",g_time-s_time);
 	double e_time = wtime();	
 	printf("Tempo total de ordenação:[%f]\n",e_time - s_time);
-	//cudaFree(dev_vet);
-	if(h_global_part!=NULL){
-		printf("free h_global_part\n");
-		//cudaFreeHost(h_global_part);
-		//free(h_global_part);
+	
+	if(d_global_array !=NULL){
+		cudaFree(d_global_array);
 	}
-	if(h_global_vet_device!=NULL){
-		printf("free h_global_vet_device\n");
-		//cudaFreeHost(h_global_vet_device);
-		//free(h_global_vet_device);
+	if(h_global_part!=NULL){		
+		cudaFreeHost(h_global_part);		
 	}
+	if(h_global_array!=NULL){		
+		cudaFreeHost(h_global_array);		
+	}
+	/********************************************************************************
+	*	OPEN_MP																		*
+	*********************************************************************************/
+
+
+
+
+
+
+
+
+
+
+	/********************************************************************************
+	*	SEQUENCIAL																	*
+	*********************************************************************************/
+
+
 
 	return 0;
 }
@@ -194,15 +220,15 @@ __host__ void host_intercala (long p, long q, long r, long *v)
 }
 
 __host__ void host_get_global_array(){
-	/* if(h_global_vet_device!=NULL){
-		cudaMallocHost((void **)&h_global_vet_device,h_global_size_vet*sizeof(long));	
+	/* if(h_global_array!=NULL){
+		cudaMallocHost((void **)&h_global_array,h_global_array_size*sizeof(long));	
 	} */
-	if(h_global_vet_device==NULL){		
+	if(h_global_array==NULL){		
 		host_print_erro("host_get_global_array","Erro ao alocar d_vet");
 	}	
-	KERNEL_get_global_array<<<1,1>>>(h_global_vet_device);	
+	KERNEL_get_global_array<<<1,1>>>(h_global_array);	
 	cudaDeviceSynchronize();	
-	printf("h_global_vet_device[0] %ld\n ",h_global_vet_device[0]);
+	printf("h_global_array[0] %ld\n ",h_global_array[0]);
 	
 }
 
@@ -245,9 +271,9 @@ __host__ int host_make_input_file(char *nome){
 	long val;
 	char buffer[10] = "#size";
 	fprintf(fp, "%s\n", buffer);
-	fprintf(fp, "%ld\n", h_global_size_vet);
+	fprintf(fp, "%ld\n", h_global_array_size);
 
-	for(int i=0; i<h_global_size_vet;i++){
+	for(int i=0; i<h_global_array_size;i++){
 		val  = rand() % 1000;// (0 <= rand <= n)
 		fprintf(fp, "%ld\n",val);// escreve o numero separado por ','
 	}
@@ -278,11 +304,11 @@ __host__ int host_load_input_file(char *nome){
 	long value;
 	long i = 0;
 	//long *aux = (long*)malloc(size * sizeof(long));
-	h_global_size_vet = size;
-	cudaMallocHost((void **) &h_global_vet_device, h_global_size_vet*sizeof(long));	
-	//h_global_vet_device = (long*)malloc(size * sizeof(long));
+	h_global_array_size = size;
+	cudaMallocHost((void **) &h_global_array, h_global_array_size*sizeof(long));	
+	//h_global_array = (long*)malloc(size * sizeof(long));
 	while ( fscanf(fp, "%ld",&value) != EOF ){		
-		h_global_vet_device[i] =(long) value;		
+		h_global_array[i] =(long) value;		
 		i++;
 	}
 	fclose(fp);	

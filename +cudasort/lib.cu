@@ -36,7 +36,7 @@ __device__ long device_radix_get_max_val(long arr[], long n);
 __device__ long device_radix_sort_array(long x);
 
 
-__device__ void device_heap_swap(long* a, long* b);
+__device__ void device_swap(long* a, long* b);
 
 __device__ void device_heapify(long *arr, long n, long i);
 
@@ -51,13 +51,71 @@ __device__ void device_print_erro(const char *func,const char *msg);
 
 __device__ void device_print_sucess(const char *func,const char *msg);
 
+__device__ int device_is_sort();
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// --- BUBLLE SORT                                                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// A function to implement bubble sort 
+__device__ void device_bubble_sort_array(long index) 
+{ 			
+	if(index<_device_global_array_size){
+
+		long index_a = index;
+		long index_b = index_a+1;
+		
+		if(index_a < _device_global_array_size && index_b < _device_global_array_size){	// testa index aout of bound array				
+			//printf("x[%ld]\n",x);
+			long *a = &_device_global_array[index_a];			// posicao 0
+			long *b = &_device_global_array[index_b];			// posicao 1
+			if(*b < *a){
+				//printf("[device_bubble_sort_array] index[%ld] 1 swap(%ld,%ld)\n",index,*a,*b);
+				device_swap(a,b);		
+			}								
+		}
+	}
+	__syncthreads(); 
+	
+    
+} 
+
+__device__ void device_bubble_sort(long tId) {
+	for(int k=0; k<(device_ceild((double)_device_global_array_size/2));k++){
+		
+		long x=tId,y=0;
+		int shift = 0;																						//   sz    t p        p:par, t:threads sz=size_vet
+		long posicao;
+		int iteracoes = device_ceild((double)_device_global_array_size/(_device_global_nr_thread*2)); ///  23 / (3*2) = 10/4 = 3
+		for(int i=0; i< iteracoes;i++){
+			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads
+			//printf("x[%ld] posicao[%ld]\n",x,posicao);
+			device_bubble_sort_array(posicao);		
+			y+=_device_global_nr_thread;
+		}
+		__syncthreads();
+		shift = 1; // desloca para pegar de forma ímpar
+		y=0;
+		//printf("shift\n");
+		for(int i=0, y=0; i< iteracoes;i++){
+			posicao = (2 * tId) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads +shift
+			//printf("x[%ld] posicao[%ld]\n",x,posicao);
+			device_bubble_sort_array(posicao);		
+			y+=_device_global_nr_thread;
+		} 
+		
+	}
+	
+	
+	
+
+}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- HEAP SORT                                                                                                                      //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// A utility function to device_heap_swap two elements
-__device__ void device_heap_swap(long* a, long* b)
+// A utility function to device_swap two elements
+__device__ void device_swap(long* a, long* b)
 {
     long t = *a;
     *a = *b;
@@ -82,7 +140,7 @@ __device__ void device_heapify(long *arr, long n, long i)
  
     // If largest is not root
     if (largest != i) {
-        device_heap_swap(&arr[i], &arr[largest]);
+        device_swap(&arr[i], &arr[largest]);
  
         // Recursively device_heapify the affected sub-tree
         device_heapify(arr, n, largest);
@@ -99,7 +157,7 @@ __device__ void device_heap_sort(long *arr, long n)
     // One by one extract an element from heap
     for (long i = n - 1; i > 0; i--) {
         // Move current root to end
-        device_heap_swap(&arr[0], &arr[i]);
+        device_swap(&arr[0], &arr[i]);
  
         // call max device_heapify on the reduced heap
         device_heapify(arr, i, 0);
@@ -247,11 +305,29 @@ __global__ void KERNEL_set_globals(long *vet_d, long vet_size,long nthreads){
 }
 
 __global__ void KERNEL_call_sort (long nthreads) {
-	long x = threadIdx.x;
+	long tId = threadIdx.x;
 	
+	device_bubble_sort(tId);
+	
+	
+	
+	
+	/* for(long k=0;k< nthreads*_device_global_array_size ;k++){
+		for(long shift=0;shift<2;shift++){
+			//enquanto não estiver 
+			int iteracoes_per_array = device_ceild((double)_device_global_array_size/2*nthreads); ///  10 / (2*2) = 10/4 = 3.
+			//printf("iteracoes_per_array [%d]\n",iteracoes_per_array);									     
+			for(int i=0;i<iteracoes_per_array;i++){			//												 x0       x1      x0        x1      x0       x1 === iterações para fazer o array todo(vezes)
+				device_bubble_sort_array(x,shift);			//executa sobre todo o array fazendo swap entre [0][1] - [2][3] - [4][5] - [6][7] - [8][9]   NULL
+				if(device_is_sort())return;
+				x+=nthreads;				
+			}
+			x = threadIdx.x;
+		}
+	} */
 	
 	//Inicia particionamento e ordenação
-	if((_device_global_array_size<1000000)){
+	/* if((_device_global_array_size<1000000)){
 		if(x==0){
 			printf("\nutilizando [radix sort]\n");
 		}
@@ -262,7 +338,7 @@ __global__ void KERNEL_call_sort (long nthreads) {
 		}
 		device_heap_sort_array(x);	
 
-	}
+	} */
 	
 
 }
@@ -529,6 +605,25 @@ __host__ void host_print_sucess(const char *func,const char *msg){
 
 
 __host__ int h_is_sort(long * arr,long n){	
+	long ordenado = 0;	
+	for(long i=1;i<n;i++){
+		if(arr[i-1]>arr[i]){
+			//printf("arr[%ld]>arr[%ld]--[%ld,%ld]\n",i-1,i,arr[i-1],arr[i]);
+			ordenado ++;			
+		}		
+	}
+	if(ordenado==0){
+		//printf("\nSub particao ordenada!\n");
+		return 1;
+	}else{
+		//printf("\nSub particao desordenada, %ld posicoes fora de ordem!\n",ordenado);
+		return 0;
+	}	
+}
+
+__device__ int device_is_sort(){	
+	long * arr = _device_global_array;
+	long n = _device_global_array_size;
 	long ordenado = 0;	
 	for(long i=1;i<n;i++){
 		if(arr[i-1]>arr[i]){
