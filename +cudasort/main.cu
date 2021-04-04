@@ -123,7 +123,7 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                        OPEN_MP BUBBLE SORT                             ////////////////////////////
 
-	if(h_global_array_size<=10000 ){
+	if(h_global_array_size<=100000 ){
 		host_load_input_file(nome);
 		double omp_time;	
 
@@ -141,7 +141,7 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                             CUDA HEAP SORT                             ////////////////////////////
 	
-	if(h_global_nr_threads<200 && h_global_array_size <=100000){
+	if(h_global_nr_threads<=200 && h_global_array_size <=100000){
 		host_load_input_file(nome);
 		if(d_global_array!= NULL){
 			cudaFree(d_global_array);
