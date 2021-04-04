@@ -69,7 +69,7 @@ int main (int argc, char ** argv) {
 	d_global_array=NULL;
 	
 	h_global_array_size=100000;		
-	h_global_nr_threads = 512;
+	h_global_nr_threads = 100;
 	//long nblocos = 1;
 	char nome[] = "caos.map";
 	
@@ -103,7 +103,7 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                     SEQUENCIAL BUBBLE SORT                             ////////////////////////////
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	if(0/* SEQUENCIAL */){
+	if(h_global_array_size<=100000){
 		double s_time_seq = wtime();
 		sequencial_bubble_sort(h_global_array,h_global_array_size);
 		double e_time_seq = wtime();
@@ -123,13 +123,13 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                        OPEN_MP BUBBLE SORT                             ////////////////////////////
 
-	if(OMP_BUBBLE){
+	if(h_global_array_size<=10000 ){
 		host_load_input_file(nome);
 		double omp_time;	
 
 		omp_time = omp_bubble_sort(h_global_array,h_global_array_size);		
 		if(h_is_sort(h_global_array,h_global_array_size)){
-			printf("Tempo omp[%3f]",omp_time);
+			printf("Tempo omp[%3f]\n",omp_time);
 			host_print_sucess("OMP_BUBBLE","ORDENADO\n\n");
 
 		}else{
@@ -141,7 +141,7 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                             CUDA HEAP SORT                             ////////////////////////////
 	
-	if(CUDA_HEAP){
+	if(h_global_nr_threads<200 && h_global_array_size <=100000){
 		host_load_input_file(nome);
 		if(d_global_array!= NULL){
 			cudaFree(d_global_array);
@@ -198,7 +198,7 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                           CUDA BUBBLE SORT                             ////////////////////////////
 	
-	if(CUDA_BUBBLE){
+	if(h_global_array_size<=10000){
 
 		host_load_input_file(nome);
 		if(d_global_array!= NULL){
@@ -436,7 +436,11 @@ __host__ double omp_bubble_sort(long *arr,  long n){
 	long first;
 	double start,end;
 	start=omp_get_wtime();
-	omp_set_num_threads(h_global_nr_threads);
+	int thr;
+	if(h_global_array_size*2>16){
+		thr = 16;
+	}
+	omp_set_num_threads(thr);
 	for( i = 0; i < n-1; i++ )
 	{
 		first = i % 2; 
