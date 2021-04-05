@@ -57,7 +57,7 @@ __device__ int device_is_sort();
 // --- BUBLLE SORT                                                                                                                    //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// A function to implement bubble sort 
+
 __device__ void device_bubble_sort_array(long index) 
 { 			
 	if(index<_device_global_array_size){
@@ -66,52 +66,39 @@ __device__ void device_bubble_sort_array(long index)
 		long index_b = index_a+1;
 		
 		if(index_a < _device_global_array_size && index_b < _device_global_array_size){	// testa index aout of bound array				
-			//printf("x[%ld]\n",x);
-			long *a = &_device_global_array[index_a];			// posicao 0
-			long *b = &_device_global_array[index_b];			// posicao 1
-			if(*b < *a){
-				//printf("[device_bubble_sort_array] index[%ld] 1 swap(%ld,%ld)\n",index,*a,*b);
+			long *a = &_device_global_array[index_a];			// posicao i
+			long *b = &_device_global_array[index_b];			// posicao i+1
+			if(*b < *a){				
 				device_swap(a,b);		
 			}								
 		}
 	}
-	__syncthreads(); 
 	
     
 } 
 
 __device__ void device_bubble_sort(long tId) {
 
-
-	for(int k=0; k<(_device_global_array_size);k++){
+	for(int k=0; k<device_ceild(((double)(_device_global_array_size)/((double)2)));k++){
 		
 		long x=tId,y=0;
-		int shift = 0;																						//   sz    t p        p:par, t:threads sz=size_vet
+		int shift = 0;
 		long posicao=0;
-		//int iteracoes = device_ceild((double)_device_global_array_size/(_device_global_nr_thread*2)); ///  23 / (3*2) = 10/4 = 3
-		//for(int i=0; i< iteracoes;i++){
-		do{
-			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads
-			//printf("x[%ld] posicao[%ld]\n",x,posicao);
-			device_bubble_sort_array(posicao);		
-			y+=_device_global_nr_thread;
-			__syncthreads();
-		}while(posicao<_device_global_array_size);
-
-
-		__syncthreads();
-		shift = 1; // desloca para pegar de forma ímpar
-		y=0;
-				
-		do{
-		//for(int i=0, y=0; i< iteracoes;i++){
-			posicao = (2 * tId) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads +shift
-			//printf("x[%ld] posicao[%ld]\n",x,posicao);
-			device_bubble_sort_array(posicao);		
-			y+=_device_global_nr_thread;
-			__syncthreads();
-		}while(posicao<_device_global_array_size); 
 		
+		for(int i=0;i<device_ceild(((double)_device_global_array_size)/(double)(2*_device_global_nr_thread)); i++,y+=_device_global_nr_thread){
+			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads			
+			device_bubble_sort_array(posicao);					
+			__syncthreads();
+		}
+		__syncthreads();
+		shift = 1; // desloca uma unidade para pegar os ímpares
+		y=0;
+		
+		for(int i=0;i<device_ceild(((double)_device_global_array_size)/(double)(2*_device_global_nr_thread)); i++,y+=_device_global_nr_thread){
+			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads			
+			device_bubble_sort_array(posicao);					
+			__syncthreads();
+		}		
 		__syncthreads();
 	}
 	
