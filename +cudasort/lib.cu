@@ -174,11 +174,11 @@ __device__ long device_heap_sort_array(long x){
 	long *sub_arr =NULL;
 	
 	sub_arr = &_device_global_array[a];
-	device_heap_sort(&sub_arr[a], n);		
+	device_heap_sort(&sub_arr[0], n);		
 	__syncthreads();
 	
 	//if(x!=1) return 0; //para facilitar a programação 
-	device_check_sorted(&sub_arr[a], n);	
+	device_check_sorted(&sub_arr[0], n);	
 	return 1;
 }
 

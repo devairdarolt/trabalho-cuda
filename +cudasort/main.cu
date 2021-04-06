@@ -48,6 +48,13 @@ __host__ void sequencial_bubble_sort(long *arr, int long);
 
 __host__ double omp_bubble_sort(long *arr,  long n);
 
+
+__host__ void host_swap(long* a, long* b);
+
+__host__ void host_heapify(long *arr, long n, long i);
+
+__host__ void host_heap_sort(long *arr, long n);
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DE ARQUIVO                                                                                                             //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +144,7 @@ int main (int argc, char ** argv) {
 		}
 		cudaFreeHost(h_global_array);
 	}
-	
+
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                             CUDA HEAP SORT                             ////////////////////////////
 	
@@ -167,9 +174,9 @@ int main (int argc, char ** argv) {
 		host_get_global_nr_partitions();
 		cudaDeviceSynchronize();	
 
+		
 		host_get_global_partitions();
 		cudaDeviceSynchronize();	 
-
 		
 		cpu_merge();
 		double e_time_cuda_heap = wtime();	
@@ -192,6 +199,25 @@ int main (int argc, char ** argv) {
 	
 	}
 	
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	////////////////////////////                         SEQUENCIAL HEAP SORT                           ////////////////////////////
+
+	if(1==1){
+		host_load_input_file(nome);
+		double s_sequencial_heap = wtime();		
+		host_heap_sort(h_global_array, h_global_array_size);
+		double e_sequencial_heap = wtime();
+
+		if(h_is_sort(h_global_array,h_global_array_size)){
+			printf("Tempo omp[%3f]\n",e_sequencial_heap - s_sequencial_heap);
+			host_print_sucess("SEQUENCIAL_HEAP","ORDENADO\n\n");
+
+		}else{
+			host_print_erro("SEQUENCIAL_HEAP","ORDENADO\n\n");
+		}
+		cudaFreeHost(h_global_array);
+	}
 
 
 
@@ -481,4 +507,65 @@ __host__ void cpu_merge(){
 		h_global_nr_part = ceil((double)h_global_nr_part/(double)2);				
 	}
 	
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// A utility function to device_swap two elements
+__host__ void host_swap(long* a, long* b)
+{
+    long t = *a;
+    *a = *b;
+    *b = t;
+}
+
+
+__host__ void host_heapify(long *arr, long n, long i)
+{
+    long largest = i; 
+    long l = 2 * i + 1; // esquerda = 2*i + 1
+    long r = 2 * i + 2; // direita = 2*i + 2
+ 
+    
+    if (l < n && arr[l] > arr[largest])
+        largest = l;
+ 
+    
+    if (r < n && arr[r] > arr[largest])
+        largest = r;
+ 
+    
+    if (largest != i) {
+        host_swap(&arr[i], &arr[largest]);
+         
+        host_heapify(arr, n, largest);
+    }
+}
+ 
+
+__host__ void host_heap_sort(long *arr, long n)
+{
+    
+    for (long i = n / 2 - 1; i >= 0; i--)
+		host_heapify(arr, n, i);
+ 
+    
+    for (long i = n - 1; i > 0; i--) {
+        
+        host_swap(&arr[0], &arr[i]);        
+        host_heapify(arr, i, 0);
+    }
 }
