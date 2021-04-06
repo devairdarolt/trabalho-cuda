@@ -118,44 +118,40 @@ __device__ void device_swap(long* a, long* b)
     *b = t;
 }
 
-// To device_heapify a subtree rooted with node i which is
-// an index in arr[]. n is size of heap
+
 __device__ void device_heapify(long *arr, long n, long i)
 {
-    long largest = i; // Initialize largest as root
-    long l = 2 * i + 1; // left = 2*i + 1
-    long r = 2 * i + 2; // right = 2*i + 2
+    long largest = i; 
+    long l = 2 * i + 1; // esquerda = 2*i + 1
+    long r = 2 * i + 2; // direita = 2*i + 2
  
-    // If left child is larger than root
+    
     if (l < n && arr[l] > arr[largest])
         largest = l;
  
-    // If right child is larger than largest so far
+    
     if (r < n && arr[r] > arr[largest])
         largest = r;
  
-    // If largest is not root
+    
     if (largest != i) {
         device_swap(&arr[i], &arr[largest]);
- 
-        // Recursively device_heapify the affected sub-tree
+         
         device_heapify(arr, n, largest);
     }
 }
  
-// main function to do heap sort
+
 __device__ void device_heap_sort(long *arr, long n)
 {
-    // Build heap (rearrange array)
+    
     for (long i = n / 2 - 1; i >= 0; i--)
         device_heapify(arr, n, i);
  
-    // One by one extract an element from heap
+    
     for (long i = n - 1; i > 0; i--) {
-        // Move current root to end
-        device_swap(&arr[0], &arr[i]);
- 
-        // call max device_heapify on the reduced heap
+        
+        device_swap(&arr[0], &arr[i]);        
         device_heapify(arr, i, 0);
     }
 }
@@ -178,11 +174,11 @@ __device__ long device_heap_sort_array(long x){
 	long *sub_arr =NULL;
 	
 	sub_arr = &_device_global_array[a];
-	device_heap_sort(&sub_arr[0], n);		
+	device_heap_sort(&sub_arr[a], n);		
 	__syncthreads();
 	
 	//if(x!=1) return 0; //para facilitar a programação 
-	device_check_sorted(&sub_arr[0], n);	
+	device_check_sorted(&sub_arr[a], n);	
 	return 1;
 }
 
@@ -324,37 +320,6 @@ __global__ void KERNEL_call_sort (long nthreads,int opc) {
 	
 
 	
-	
-	
-	
-	/* for(long k=0;k< nthreads*_device_global_array_size ;k++){
-		for(long shift=0;shift<2;shift++){
-			//enquanto não estiver 
-			int iteracoes_per_array = device_ceild((double)_device_global_array_size/2*nthreads); ///  10 / (2*2) = 10/4 = 3.
-			//printf("iteracoes_per_array [%d]\n",iteracoes_per_array);									     
-			for(int i=0;i<iteracoes_per_array;i++){			//												 x0       x1      x0        x1      x0       x1 === iterações para fazer o array todo(vezes)
-				device_bubble_sort_array(x,shift);			//executa sobre todo o array fazendo swap entre [0][1] - [2][3] - [4][5] - [6][7] - [8][9]   NULL
-				if(device_is_sort())return;
-				x+=nthreads;				
-			}
-			x = threadIdx.x;
-		}
-	} */
-	
-	//Inicia particionamento e ordenação
-	/* if((_device_global_array_size<1000000)){
-		if(x==0){
-			printf("\nutilizando [radix sort]\n");
-		}
-		device_radix_sort_array(x);	//TODO anteriormente
-	}else{
-		if(x==0){
-			printf("\nUtilizando[heap sort]\n");
-		}
-		device_heap_sort_array(x);	
-
-	} */
-	
 
 }
 __global__ void KERNEL_reset(){
@@ -387,13 +352,7 @@ __global__ void KERNEL_print_array(){
 		device_print_erro("KERNEL_print_array","os dados não foram copiados para a memória da placa...");
 	}
 	printf("\n");
-	/* 
-	if(device_check_sorted(&_device_global_array[0],_device_global_array_size)){		
-		device_print_sucess("KERNEL_print_array","VETOR ORDENADO!");
-	}else{
-		device_print_erro("KERNEL_print_array","VETOR DESORDENADO!");		
-	}	
-	printf("\n"); */
+	
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // --- FUNÇÕES DE AUXILIARES                                                                                                          //

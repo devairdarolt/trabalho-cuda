@@ -198,7 +198,7 @@ int main (int argc, char ** argv) {
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////////////////////////////                           CUDA BUBBLE SORT                             ////////////////////////////
 	
-	if(h_global_array_size<=1000000){
+	if(h_global_array_size<=100000){
 
 		host_load_input_file(nome);
 		if(d_global_array!= NULL){
@@ -246,14 +246,6 @@ int main (int argc, char ** argv) {
 	
 	return 0;
 }
-
-
-
-
-
-
-
-
 
 
 
@@ -438,6 +430,7 @@ __host__ double omp_bubble_sort(long *arr,  long n){
 	double start,end;
 	start=omp_get_wtime();
 	int thr;
+	thr = h_global_array_size/2;
 	if(h_global_array_size*2>16){
 		thr = 16;
 	}
@@ -449,7 +442,7 @@ __host__ double omp_bubble_sort(long *arr,  long n){
 		for( j = first; j < n-1; j += 1 )
 		{
 			if( arr[ j ] > arr[ j+1 ] )
-			{
+			{				
 				swap( &arr[ j ], &arr[ j+1 ] );
 			}
 		}
@@ -471,13 +464,11 @@ __host__ void cpu_merge(){
 			
 			aux_1 = h_global_part[part];
 			if(h_global_nr_part%2!=0 && part==h_global_nr_part-1){
+				//copia;
 				h_global_part[count] =aux_1;
-				//printf("%d [%ld -- %ld][%ld] -- cpiado\n",idT,aux_1.a,aux_1.b,aux_1.n);
 			}else{
 				//aux_1 = h_global_part[part];
-				aux_2 = h_global_part[part+1];	
-							
-				//printf("%d [%ld -- %ld][%ld - %ld][%ld] -- intercalado [%ld -- %ld]\n",count,aux_1.a,aux_1.b,aux_2.a,aux_2.b,aux_1.n+aux_2.n,aux_1.a,aux_2.b);
+				aux_2 = h_global_part[part+1];												
 				host_intercala(aux_1.a,aux_2.a,aux_2.b+1,&h_global_array[0]);
 				Data result;
 				result.a=aux_1.a;
