@@ -64,8 +64,8 @@ __device__ void device_bubble_sort_array(long index)
 
 		long index_a = index;
 		long index_b = index_a+1;
-		
-		if(index_a < _device_global_array_size && index_b < _device_global_array_size){	// testa index aout of bound array				
+		// testa index out of bound array				
+		if(index_a < _device_global_array_size && index_b < _device_global_array_size){	
 			long *a = &_device_global_array[index_a];			// posicao i
 			long *b = &_device_global_array[index_b];			// posicao i+1
 			if(*b < *a){				
@@ -88,7 +88,7 @@ __device__ void device_bubble_sort(long tId) {
 		for(int i=0;i<device_ceild(((double)_device_global_array_size)/(double)(2*_device_global_nr_thread)); i++,y+=_device_global_nr_thread){
 			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads			
 			device_bubble_sort_array(posicao);					
-			__syncthreads();
+			
 		}
 		__syncthreads();
 		shift = 1; // desloca uma unidade para pegar os ímpares
@@ -97,7 +97,7 @@ __device__ void device_bubble_sort(long tId) {
 		for(int i=0;i<device_ceild(((double)_device_global_array_size)/(double)(2*_device_global_nr_thread)); i++,y+=_device_global_nr_thread){
 			posicao = (2 * x) + (2 * y) + shift; // y = deslocamento em relação ao y anterior, deslocamento de n threads			
 			device_bubble_sort_array(posicao);					
-			__syncthreads();
+			
 		}		
 		__syncthreads();
 	}
